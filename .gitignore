@@ -1,0 +1,5 @@
+ris_project/.venv/
+**/__pycache__/
+**/.pytest_cache/
+ris_project/experiments_exp*.log
+*.pyc
