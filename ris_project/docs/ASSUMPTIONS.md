@@ -156,11 +156,15 @@ leave a net deficit against a merely-blocked-not-obstructed single-hop
 link) -- it is why RIS papers emphasise that large M and/or careful
 placement are needed, and it is exactly the limitation flagged for the
 simplified cascaded-channel model in docs/REFERENCES.md, [3] and [8].
-The K=4 case shows the same pattern, with the AO-RZF/no-RIS crossover
-visible within the assignment's own M=16..256 sweep range (see exp2 plot
-and README results discussion) -- the K=1 crossover needs much larger M
-than the sweep covers, which the exp1/exp2 K=1 plots show honestly as
-"AO-RIS trending up steeply with M but not yet crossing No-RIS by M=256."
+The K=4 case shows the same pattern and, like K=1, does **not** cross
+within the assignment's own M=16..256 sweep range either (at M=256,
+AO-RZF ≈17.6 bit/s/Hz vs no-RIS ≈58.0 bit/s/Hz -- no-RIS benefits from
+ZF across Nt=8 antennas directly serving 4 users over a single, much
+shorter-effective-path-loss hop). Both the exp1 and exp2 plots show this
+honestly: AO-RIS/AO-RZF climbing steeply with M (confirming the ~M^2
+mechanism works as expected) against a flat, M-independent no-RIS line
+that it has not yet caught by M=256 in either K setting, in this
+geometry.
 
 ## exp7 (optional DRL demo) -- actual result
 

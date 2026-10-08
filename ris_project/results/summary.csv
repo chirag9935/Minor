@@ -1,23 +1,23 @@
 metric,value
-"AO-RIS rate @ Ptx=30dBm, K=1 [bit/s/Hz]",7.104591216420874
-"Random-phase rate @ Ptx=30dBm, K=1 [bit/s/Hz]",1.6598011089540154
-"No-RIS rate @ Ptx=30dBm, K=1 [bit/s/Hz]",3.1662026366826392
-"AF relay rate @ Ptx=30dBm, K=1 [bit/s/Hz]",5.446578599709341
-"AO gain over random-phase @ Ptx=30dBm, K=1 [x]",4.280387076556475
-"AO gain over no-RIS @ Ptx=30dBm, K=1 [x]",2.243883930266904
-"AO-RZF rate @ Ptx=30dBm, K=4 [bit/s/Hz]",7.672858059343245
-"AO-ZF rate @ Ptx=30dBm, K=4 [bit/s/Hz]",2.7749671881769022
-"Random-phase rate @ Ptx=30dBm, K=4 [bit/s/Hz]",3.373029165861178
-"No-RIS rate @ Ptx=30dBm, K=4 [bit/s/Hz]",12.175033416059469
-"AO-RZF gain over random-phase @ Ptx=30dBm, K=4 [x]",2.274767777581391
-"AO-RIS rate @ M=64, Ptx=30dBm, K=1 [bit/s/Hz]",7.104591216420874
-"AO-RIS rate @ M=256, Ptx=30dBm, K=1 [bit/s/Hz]",15.08702425316602
-"AO-RIS array-gain scaling M=64->256 [x, expect ~(256/64)^2=16]",252.90171966326406
-"AO-RZF rate @ M=64, Ptx=30dBm, K=4 [bit/s/Hz]",7.672858059343245
-"AO-RZF rate @ M=256, Ptx=30dBm, K=4 [bit/s/Hz]",21.400625392156073
-"No-RIS rate @ Ptx=30dBm, K=4 (M-independent) [bit/s/Hz]",12.175033416059469
+"AO-RIS rate @ Ptx=30dBm, K=1 [bit/s/Hz]",6.9070044399824395
+"Random-phase rate @ Ptx=30dBm, K=1 [bit/s/Hz]",1.5522360901462564
+"No-RIS rate @ Ptx=30dBm, K=1 [bit/s/Hz]",14.363204323094592
+"AF relay rate @ Ptx=30dBm, K=1 [bit/s/Hz]",7.973892515221005
+"AO gain over random-phase @ Ptx=30dBm, K=1 [x]",4.449712568744385
+"AO gain over no-RIS @ Ptx=30dBm, K=1 [x]",0.48088186205613387
+"AO-RZF rate @ Ptx=30dBm, K=4 [bit/s/Hz]",10.2853142955449
+"AO-ZF rate @ Ptx=30dBm, K=4 [bit/s/Hz]",5.646737906906553
+"Random-phase rate @ Ptx=30dBm, K=4 [bit/s/Hz]",4.872890909009912
+"No-RIS rate @ Ptx=30dBm, K=4 [bit/s/Hz]",57.891925788308896
+"AO-RZF gain over random-phase @ Ptx=30dBm, K=4 [x]",2.1107212304973806
+"AO-RIS rate @ M=64, Ptx=30dBm, K=1 [bit/s/Hz]",6.9070044399824395
+"AO-RIS rate @ M=256, Ptx=30dBm, K=1 [bit/s/Hz]",10.88903107412784
+"AO-RIS array-gain scaling M=64->256 [x, expect ~(256/64)^2=16]",15.801905505459525
+"AO-RZF rate @ M=64, Ptx=30dBm, K=4 [bit/s/Hz]",10.2853142955449
+"AO-RZF rate @ M=256, Ptx=30dBm, K=4 [bit/s/Hz]",17.524855353881286
+"No-RIS rate @ Ptx=30dBm, K=4 (M-independent) [bit/s/Hz]",57.891925788308896
 AO (K=1) iterations to converge (mean curve),15.0
 AO (K=4) iterations to converge (mean curve),15.0
-"AO-RIS rate @ 28 GHz, shortest distance [bit/s/Hz]",17.906267776455294
-"AO-RIS rate @ 140 GHz, shortest distance [bit/s/Hz]",8.61838070225052
-"AO-RIS rate @ 300 GHz, shortest distance [bit/s/Hz]",4.393051849460658
+"AO-RIS rate @ 28 GHz, shortest distance [bit/s/Hz]",17.702945061394754
+"AO-RIS rate @ 140 GHz, shortest distance [bit/s/Hz]",8.417355601752252
+"AO-RIS rate @ 300 GHz, shortest distance [bit/s/Hz]",4.2165721809580425

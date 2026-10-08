@@ -131,14 +131,13 @@ the physical interpretation of each. Headline numbers are in
 2. **Rate vs M** (`exp2_rate_vs_M_K1/K4.png`): AO-RIS rate grows steeply
    with M (coherent M-element combining, ~M^2 in SNR -- see the sanity
    check in `docs/ASSUMPTIONS.md`); the random-phase curve grows much more
-   slowly (incoherent, ~M-fold combining only). AO-RIS overtakes the AF
-   relay by M~128 (K=1) but does not catch the no-RIS baseline within the
-   assignment's own M=16..256 sweep range for K=1 (empirically it needs
-   M on the order of 1000+ in this geometry -- see
-   `docs/ASSUMPTIONS.md`). For K=4, the story is different: random-phase
-   and both AO precoders visibly bend upward with M, while no-RIS (M
-   -independent) stays flat -- the steep AO-RIS growth trend is the
-   headline result of this plot either way.
+   slowly (incoherent, ~M-fold combining only). AO-RIS (K=1) overtakes the
+   AF relay by M~128. Neither K=1 nor K=4 AO-RIS catches the M-independent
+   no-RIS baseline within the assignment's own M=16..256 sweep range in
+   this geometry (empirically, K=1 needs M on the order of 1000+ -- see
+   `docs/ASSUMPTIONS.md`); the steep, clearly-still-climbing AO-RIS growth
+   trend against a flat no-RIS line is the headline result of this plot --
+   it's the experiment that explains *why* M matters so much in exp1.
 3. **AO convergence** (`exp3_convergence_K1/K4.png`): the rate increases
    monotonically with AO iteration from every random initialisation and
    converges within a handful of iterations, for both K=1 (closed form)

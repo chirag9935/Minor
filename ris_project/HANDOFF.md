@@ -30,51 +30,47 @@ other docs.
 
 **All of Milestones 1-4 are implemented and all 16 tests in
 `tests/test_core.py` pass.** Milestone 5 (exp7, optional DRL demo) is
-implemented and has been run once.
+implemented.
 
 **A significant channel-model bug was found and fixed partway through
-Milestone 4** (see "The bug" below). All code is now correct and
-consistent with the fix. However, as of this snapshot, **the experiment
-*data* (`results/*.npz`, `plots/*.png`) is a mix of pre-fix and post-fix
-runs** — re-running everything from a clean state was in progress when
-this file was written. Check each experiment's completion status below
-before trusting its plot/npz.
+Milestone 4** (see "The bug" below). All code is correct and consistent
+with the fix, and the fix has been numerically re-verified (post-fix,
+`make_summary.py`'s M=64->256 SNR-scaling metric read **15.8x against a
+16x theoretical expectation** — a near-exact match, strong confirmation
+the fix is right).
 
-| Experiment | Code status | Data status (as of this snapshot) |
-|---|---|---|
-| `plot_geometry.py` | done | valid (geometry doesn't depend on the channel-amplitude bug) |
-| `exp1_rate_vs_power` | done | **re-run in progress** — K=1 panel done post-fix; K=4 panel was at ~5/7 Ptx points when this file was written. Check `experiments_exp1.log` / `results/exp1_rate_vs_power_K4.npz` mtime vs the fix time before trusting it. |
-| `exp2_rate_vs_M` | done | **STALE — pre-fix data.** Must be re-run after exp1 finishes (both are heavy K=4 manifold-optimization runs; avoid running them concurrently, see "Performance notes"). |
-| `exp3_convergence` | done | **valid, post-fix** (re-run already completed after the fix) |
-| `exp4_ee_vs_se` | done | **valid, post-fix** (re-run already completed after the fix) |
-| `exp5_distance` | done | **valid, post-fix** (re-run already completed after the fix) |
-| `exp6_frequency` | done | **valid, post-fix** (re-run already completed after the fix) |
-| `exp7_drl_demo` (optional) | done | **STALE — pre-fix data AND calibrated against old gains.** Should be re-run alone (not concurrently with exp1/exp2) so it can respect its 15-minute time budget — see "Performance notes", it blew the budget (39 min) last time purely due to CPU contention. |
-| `make_summary.py` | done | **must be re-run last**, after every exp1-exp6 npz is fresh, to regenerate `results/summary.csv` |
+| Experiment | Data status (as of this snapshot) |
+|---|---|
+| `plot_geometry.py` | valid (geometry doesn't depend on the channel-amplitude bug) |
+| `exp1_rate_vs_power` | **valid, post-fix** (both K=1 and K=4 panels re-run after the fix) |
+| `exp2_rate_vs_M` | **valid, post-fix** (both K=1 and K=4 panels re-run after the fix) |
+| `exp3_convergence` | **valid, post-fix** |
+| `exp4_ee_vs_se` | **valid, post-fix** |
+| `exp5_distance` | **valid, post-fix** |
+| `exp6_frequency` | **valid, post-fix** |
+| `exp7_drl_demo` (optional) | **re-run in progress / check status** — was launched alone (no concurrent heavy processes) specifically so it can respect its 15-minute budget this time (the first run blew it, 39 min, purely from CPU contention with exp1/exp2 running concurrently — see "Performance notes"). Check `experiments_exp7.log` for `"exp7 done."`; if it's not there yet, either wait or re-run `python -m experiments.exp7_drl_demo` alone. |
+| `make_summary.py` | **valid, post-fix**, but **run it again after exp7 lands** so `results/summary.csv` picks up exp7's fresh numbers too (it currently doesn't read exp7's npz, so this is optional unless you add that) |
 
 ### Immediate next steps, in order
 
-1. Wait for / check on the exp1 K=4 background run (if still running — check
-   `experiments_exp1.log` in this directory, or just re-run
-   `python -m experiments.exp1_rate_vs_power` if unsure of its state; it's
-   idempotent, just slow — ~10-12 min total on this machine).
-2. Re-run `python -m experiments.exp2_rate_vs_M` (the other heavy one,
-   ~15-20 min — its K=4 panel is the slow part).
-3. Re-run `python -m experiments.exp7_drl_demo` **alone** (nothing else
-   heavy running concurrently) so it can finish in its 15-minute budget.
-4. Re-run `python -m experiments.make_summary` to regenerate
-   `results/summary.csv` from the fresh data.
-5. Re-run `pytest -q` once more as a final check (should already pass, but
-   confirm after the data refresh).
-6. Update `README.md`'s "Results" section and `docs/ASSUMPTIONS.md` with
-   the actual final numbers (the current numbers in those files reference
-   some pre-fix results — e.g. the exp2 M-scaling example in
-   ASSUMPTIONS.md's "A result worth flagging" section was computed
-   pre-fix for K=4 and should be re-verified against the fresh exp2 data;
-   the K=1 finding in the same section IS already post-fix and correct).
-7. Visually sanity-check every plot in `plots/` (open and look — matplotlib
-   won't error on a nonsensical curve, only your eyes will catch it).
-8. Only then consider the deliverable finished. At that point, this
+1. Check `experiments_exp7.log` for `"exp7 done."`. If exp7 hasn't
+   finished, wait for it (it's running alone, so it should finish inside
+   its 15-minute budget this time) or re-launch it alone if something
+   killed it.
+2. Update `docs/ASSUMPTIONS.md`'s "exp7 (optional DRL demo) -- actual
+   result" section with exp7's fresh numbers (AO oracle rate, random-phase
+   rate, SAC final rate, gap %, wall-clock time) — the numbers currently
+   there are from the pre-fix run and are now stale (the AO oracle rate in
+   particular will have changed since gains were recalibrated).
+3. Re-run `pytest -q` once more as a final check (should already pass).
+4. Visually sanity-check every plot in `plots/` (open and look — matplotlib
+   won't error on a nonsensical curve, only your eyes will catch it). In
+   particular `exp7_drl_learning_curve.png` — last known result was SAC
+   essentially failing to beat the random-phase baseline (an honest
+   negative result, not a bug — see docs/ASSUMPTIONS.md).
+5. Commit and push the exp7 update (`git add -A && git commit && git push`
+   — repo is already set up, see "Git / repo state" below).
+6. Only then consider the deliverable finished. At that point, this
    HANDOFF.md file has served its purpose — either delete it or trim it to
    a short "project complete, see README" note so it doesn't confuse
    someone into thinking the project is still in progress.
@@ -222,9 +218,9 @@ Key non-obvious facts worth knowing before you edit:
 
 ## Git / repo state
 
-This project was just (as of this handoff) pushed to
-`https://github.com/chirag9935/Minor.git` for the first time — the repo
-was empty before this push. The git repo root is the **parent** directory
+This project is pushed to `https://github.com/chirag9935/Minor.git`,
+branch `main` (repo was empty before the first push in this project's
+history). The git repo root is the **parent** directory
 (`C:\Users\...\Desktop\Projects\Minor`, one level above `ris_project/`),
 not `ris_project/` itself, so that the two spec markdown files
 (`RIS_Master_Prompt (1).md`, `RIS_Communication_Project_Workflow.md`) are
