@@ -168,27 +168,33 @@ geometry.
 
 ## exp7 (optional DRL demo) -- actual result
 
-Trained SAC for 40,000 steps. Measured: AO (closed-form) oracle mean rate
-≈0.895 bit/s/Hz, random-phase baseline ≈0.094 bit/s/Hz, SAC's final
-smoothed rate ≈0.099 bit/s/Hz -- an **89% gap to the AO oracle**, i.e. SAC
-essentially failed to learn anything beyond the random-phase baseline (see
-`plots/exp7_drl_learning_curve.png`: the smoothed curve never trends
-upward, it just hovers at the random-phase line with noise). This is an
-honestly-reported negative result, not a bug: the action space is the full
-M=16-dimensional phase vector, each episode is a single step (no temporal
-credit assignment to lean on), and the reward landscape (coherent phase
-alignment) is exactly the kind of narrow, non-convex optimum that
-off-the-shelf continuous-control RL struggles with when trained from
-scratch without reward shaping or curriculum -- consistent with the master
-prompt's framing of this milestone as a proof of concept, not a tuned
-baseline meant to compete with AO.
-- Also worth recording honestly: training took **2363 s (≈39 min)**,
-  well past the master prompt's 15-minute budget, because it ran
-  concurrently with the heavy K=4 AO-manifold sweeps in exp1/exp2 on the
-  same machine (CPU contention), not because SAC itself is that slow in
-  isolation (a 500-step smoke test extrapolated to ~17 min for 40k steps
-  with no contention). Not rerun in isolation to chase a cleaner number,
-  per "do not tune further."
+Trained SAC for 40,000 steps, against the corrected channel model and
+recalibrated gains, running alone (no concurrent heavy processes).
+Measured: AO (closed-form) oracle mean rate ≈3.092 bit/s/Hz, random-phase
+baseline ≈0.694 bit/s/Hz, SAC's final smoothed rate ≈0.632 bit/s/Hz --
+SAC did not even match the random-phase baseline, let alone approach the
+AO oracle (**≈80% gap to the AO oracle**). `plots/exp7_drl_learning_curve.png`
+shows the smoothed curve oscillating around the random-phase line for the
+full 40k steps with no visible upward trend. This is an honestly-reported
+negative result, not a bug -- and it reproduces across both the pre-fix
+and post-fix channel models (absolute numbers changed, the qualitative
+"SAC does not learn" finding did not), which is further evidence it's a
+genuine property of this RL setup rather than an artifact of the channel
+bug. Root cause (not pursued further, per "do not tune further"): the
+action space is the full M=16-dimensional phase vector, each episode is a
+single step (no temporal credit assignment to lean on), and the reward
+landscape (coherent phase alignment) is exactly the kind of narrow,
+non-convex optimum that off-the-shelf continuous-control RL struggles
+with when trained from scratch without reward shaping or curriculum --
+consistent with the master prompt's framing of this milestone as a proof
+of concept, not a tuned baseline meant to compete with AO.
+- Training wall-clock time: **639.6 s (≈10.7 min)**, inside the master
+  prompt's 15-minute budget -- this run was deliberately launched alone
+  (nothing else heavy running concurrently). An earlier attempt that ran
+  concurrently with the heavy K=4 AO-manifold sweeps in exp1/exp2 took
+  2363 s (≈39 min) purely from CPU contention, which is why this one was
+  re-run in isolation -- a legitimate redo to get an honest read on the
+  actual 15-minute budget, not "tuning the result."
 
 ## exp4 (EE vs SE)
 

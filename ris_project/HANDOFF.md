@@ -28,52 +28,47 @@ other docs.
 
 ## Current status (update this section as you go)
 
-**All of Milestones 1-4 are implemented and all 16 tests in
-`tests/test_core.py` pass.** Milestone 5 (exp7, optional DRL demo) is
-implemented.
+**Project is functionally complete.** All of Milestones 1-5 are
+implemented, all 16 tests in `tests/test_core.py` pass, and every
+experiment (`exp1`-`exp7`, `plot_geometry`, `make_summary`) has been run
+to completion **against the corrected channel model** (see "The bug"
+below) with fresh results in `results/*.npz` and `plots/*.png`.
 
-**A significant channel-model bug was found and fixed partway through
-Milestone 4** (see "The bug" below). All code is correct and consistent
-with the fix, and the fix has been numerically re-verified (post-fix,
-`make_summary.py`'s M=64->256 SNR-scaling metric read **15.8x against a
-16x theoretical expectation** — a near-exact match, strong confirmation
-the fix is right).
+The fix has been numerically re-verified: `make_summary.py`'s M=64->256
+SNR-scaling metric reads **15.8x against a 16x theoretical expectation**
+(was ~253x pre-fix) — a near-exact match. exp7's DRL run also completed
+within its 15-minute budget when run in isolation (639.6s), confirming
+the earlier 39-minute run was purely a CPU-contention artifact, not a
+property of the training itself.
 
-| Experiment | Data status (as of this snapshot) |
+| Experiment | Data status |
 |---|---|
-| `plot_geometry.py` | valid (geometry doesn't depend on the channel-amplitude bug) |
-| `exp1_rate_vs_power` | **valid, post-fix** (both K=1 and K=4 panels re-run after the fix) |
-| `exp2_rate_vs_M` | **valid, post-fix** (both K=1 and K=4 panels re-run after the fix) |
-| `exp3_convergence` | **valid, post-fix** |
-| `exp4_ee_vs_se` | **valid, post-fix** |
-| `exp5_distance` | **valid, post-fix** |
-| `exp6_frequency` | **valid, post-fix** |
-| `exp7_drl_demo` (optional) | **re-run in progress / check status** — was launched alone (no concurrent heavy processes) specifically so it can respect its 15-minute budget this time (the first run blew it, 39 min, purely from CPU contention with exp1/exp2 running concurrently — see "Performance notes"). Check `experiments_exp7.log` for `"exp7 done."`; if it's not there yet, either wait or re-run `python -m experiments.exp7_drl_demo` alone. |
-| `make_summary.py` | **valid, post-fix**, but **run it again after exp7 lands** so `results/summary.csv` picks up exp7's fresh numbers too (it currently doesn't read exp7's npz, so this is optional unless you add that) |
+| `plot_geometry.py` | valid |
+| `exp1_rate_vs_power` | valid, post-fix |
+| `exp2_rate_vs_M` | valid, post-fix |
+| `exp3_convergence` | valid, post-fix |
+| `exp4_ee_vs_se` | valid, post-fix |
+| `exp5_distance` | valid, post-fix |
+| `exp6_frequency` | valid, post-fix |
+| `exp7_drl_demo` (optional) | valid, post-fix, run alone (no contention) |
+| `make_summary.py` | valid, post-fix (reflects exp1/exp2/exp3/exp6 numbers; does not currently ingest exp7's npz — a small possible future addition, not a gap in what's reported, since exp7's numbers are written directly into docs/ASSUMPTIONS.md instead) |
 
-### Immediate next steps, in order
+### What's left (polish only, nothing structurally incomplete)
 
-1. Check `experiments_exp7.log` for `"exp7 done."`. If exp7 hasn't
-   finished, wait for it (it's running alone, so it should finish inside
-   its 15-minute budget this time) or re-launch it alone if something
-   killed it.
-2. Update `docs/ASSUMPTIONS.md`'s "exp7 (optional DRL demo) -- actual
-   result" section with exp7's fresh numbers (AO oracle rate, random-phase
-   rate, SAC final rate, gap %, wall-clock time) — the numbers currently
-   there are from the pre-fix run and are now stale (the AO oracle rate in
-   particular will have changed since gains were recalibrated).
-3. Re-run `pytest -q` once more as a final check (should already pass).
-4. Visually sanity-check every plot in `plots/` (open and look — matplotlib
-   won't error on a nonsensical curve, only your eyes will catch it). In
-   particular `exp7_drl_learning_curve.png` — last known result was SAC
-   essentially failing to beat the random-phase baseline (an honest
-   negative result, not a bug — see docs/ASSUMPTIONS.md).
-5. Commit and push the exp7 update (`git add -A && git commit && git push`
-   — repo is already set up, see "Git / repo state" below).
-6. Only then consider the deliverable finished. At that point, this
-   HANDOFF.md file has served its purpose — either delete it or trim it to
-   a short "project complete, see README" note so it doesn't confuse
-   someone into thinking the project is still in progress.
+Everything required by the master prompt is done and documented. If you
+want to keep improving this project rather than call it finished, the
+master prompt's own "Future work" list (see README.md) is the place to
+look — SDR phase optimization, Objective B (min-power), realistic CSI,
+hardware impairments, joint multi-user DRL, a real ITU-R/HITRAN
+absorption model, or a full written paper (assignment Step 6, currently
+only partially covered by this README + docs/). None of that is required
+to consider the master prompt's own deliverable list satisfied.
+
+If you pick this back up: skim README.md's Results section and
+docs/ASSUMPTIONS.md in full before changing anything — they carry the
+actual final numbers and the reasoning behind every non-obvious choice.
+Re-run `pytest -q` after any change to confirm nothing regressed, and see
+"Performance notes" below before kicking off any K=4 experiment rerun.
 
 ## The bug (read this before touching channel.py)
 
