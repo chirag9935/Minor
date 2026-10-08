@@ -83,6 +83,7 @@ pytest -q                                   # all tests
 python -m experiments.plot_geometry         # plots/geometry.png
 python -m experiments.exp1_rate_vs_power    # plots/exp1_*.png
 python -m experiments.exp2_rate_vs_M        # plots/exp2_*.png
+python -m experiments.exp2b_crossover       # bonus, not required: plots/exp2b_crossover_K1.png
 python -m experiments.exp3_convergence      # plots/exp3_*.png
 python -m experiments.exp4_ee_vs_se         # plots/exp4_*.png
 python -m experiments.exp5_distance         # plots/exp5_*.png
@@ -134,10 +135,16 @@ the physical interpretation of each. Headline numbers are in
    slowly (incoherent, ~M-fold combining only). AO-RIS (K=1) overtakes the
    AF relay by M~128. Neither K=1 nor K=4 AO-RIS catches the M-independent
    no-RIS baseline within the assignment's own M=16..256 sweep range in
-   this geometry (empirically, K=1 needs M on the order of 1000+ -- see
-   `docs/ASSUMPTIONS.md`); the steep, clearly-still-climbing AO-RIS growth
-   trend against a flat no-RIS line is the headline result of this plot --
-   it's the experiment that explains *why* M matters so much in exp1.
+   this geometry; the steep, clearly-still-climbing AO-RIS growth trend
+   against a flat no-RIS line is the headline result of this plot -- it's
+   the experiment that explains *why* M matters so much in exp1.
+   **Bonus** (`exp2b_crossover_K1.png`, not required by the assignment,
+   K=1 only): extends the M-sweep out to 1024 to show the actual
+   crossover rather than leaving it as an extrapolation -- AO-RIS
+   overtakes no-RIS at **M=1024** (AO-RIS=14.97 vs no-RIS=14.36
+   bit/s/Hz), confirming the trend from the M=16..256 plot does continue
+   and eventually wins, it just needs a genuinely large surface in this
+   geometry.
 3. **AO convergence** (`exp3_convergence_K1/K4.png`): the rate increases
    monotonically with AO iteration from every random initialisation and
    converges within a handful of iterations, for both K=1 (closed form)

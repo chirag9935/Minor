@@ -51,7 +51,8 @@ property of the training itself.
 | `exp5_distance` | valid, post-fix |
 | `exp6_frequency` | valid, post-fix |
 | `exp7_drl_demo` (optional) | valid, post-fix, run alone (no contention) |
-| `make_summary.py` | valid, post-fix (reflects exp1/exp2/exp3/exp6 numbers; does not currently ingest exp7's npz — a small possible future addition, not a gap in what's reported, since exp7's numbers are written directly into docs/ASSUMPTIONS.md instead) |
+| `exp2b_crossover` (bonus, not in the original file list, added for a panel presentation) | valid. K=1 only, extends exp2's M-sweep to 1024 to find the actual AO-RIS vs no-RIS crossover directly: **AO-RIS overtakes no-RIS at M=1024** (14.97 vs 14.36 bit/s/Hz); still behind at M=512 (12.94 vs 14.36). See `plots/exp2b_crossover_K1.png`. |
+| `make_summary.py` | valid, post-fix (reflects exp1/exp2/exp3/exp6 numbers; does not currently ingest exp7 or exp2b's npz — their numbers are written directly into docs/ASSUMPTIONS.md / README instead) |
 
 ### What's left (polish only, nothing structurally incomplete)
 

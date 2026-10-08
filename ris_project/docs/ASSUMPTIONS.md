@@ -149,6 +149,14 @@ beats AO-RIS across the entire Ptx=0-30 dBm range for K=1** (not just at
 high Ptx), and random-phase RIS is far below both. AO-RIS only starts to
 win against No-RIS, for K=1, once M grows into the hundreds (empirically,
 win rate over 20 draws: M=64 -> 1/20, M=256 -> 2/20, M=1024 -> 12/20).
+The exact crossover point (200-draw mean, not just a per-draw win rate)
+was pinned down directly with a bonus experiment,
+`experiments/exp2b_crossover.py` (K=1 only, M up to 1024, not required by
+the assignment -- see `plots/exp2b_crossover_K1.png`): AO-RIS overtakes
+no-RIS at **M=1024** (AO-RIS=14.97 vs no-RIS=14.36 bit/s/Hz; still behind
+at M=512: 12.94 vs 14.36). This confirms directly (not just by
+extrapolating the M=16..256 trend) that AO-RIS does eventually win in
+this geometry, given enough elements.
 This is the well-documented "multiplicative path loss" property of
 RIS-aided links (a cascaded two-hop link's path loss is the *product*,
 not the sum, of the two legs' losses, so even M^2 coherent combining can
