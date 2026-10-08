@@ -105,7 +105,7 @@ values:
 | `Nt`, default `M`, `K` | 8, 64 (8x8), 1 or 4 | |
 | `Pmax_dBm` | 30 dBm | swept 0-30 dBm in exp1/exp4 |
 | `blockage_loss_db` | 40 dB | direct-link penetration loss assumption |
-| `bs_gain_dbi` / `ue_gain_dbi` | 25 / 10 dBi | calibrated for ~15-25 dB mean AO SNR at K=1,M=64,Ptx=30dBm,140GHz (measured ≈20.8 dB) |
+| `bs_gain_dbi` / `ue_gain_dbi` | 45 / 25 dBi | calibrated for ~15-25 dB mean AO SNR at K=1,M=64,Ptx=30dBm,140GHz (measured ≈20.2 dB); deliberately high -- see docs/ASSUMPTIONS.md |
 | Absorption k(28/140/300 GHz) | 0.1 / 2 / 8 dB/km | placeholders, see [8] |
 | EE power model | eta=0.4, P_BS=1W, P_RIS=5mW/elem, P_UE=0.1W | see [5] |
 
@@ -116,16 +116,29 @@ the physical interpretation of each. Headline numbers are in
 `results/summary.csv`.)*
 
 1. **Rate vs Ptx** (`exp1_rate_vs_power_K1/K4.png`): all schemes' rate
-   increases monotonically with Ptx, as expected. AO-RIS clearly beats
-   random-phase RIS and (for K=1) the AF relay. For K=4 at the default
-   M=64, AO-RZF needs a large-enough M to beat the ZF-equipped blocked
-   direct link outright (see exp2) -- at M=64 it does not always, which is
-   the RIS "multiplicative path loss" effect discussed in
-   `docs/ASSUMPTIONS.md`.
+   increases monotonically with Ptx, as expected, and AO-RIS clearly beats
+   random-phase RIS at every power level (both K=1 and K=4) -- that
+   ordering among the RIS-phase schemes is the required comparison and it
+   always holds. Against the un-optimized blocked direct link (no-RIS),
+   however, AO-RIS does *not* win at the assignment's default M=64 in this
+   geometry: no-RIS is clearly ahead across the whole Ptx range, for both
+   K=1 and K=4. This is the RIS "multiplicative path loss" effect
+   (a cascaded two-hop link's path loss is a *product*, not a sum, of the
+   two legs' losses) discussed in detail in `docs/ASSUMPTIONS.md` -- it is
+   a real, literature-consistent finding (see [3],[8]), not a tuning
+   failure, and exp2 (below) is exactly the experiment designed to show
+   where it stops holding.
 2. **Rate vs M** (`exp2_rate_vs_M_K1/K4.png`): AO-RIS rate grows steeply
-   with M (coherent M-element combining); the random-phase curve grows
-   much more slowly (incoherent combining). For K=4, AO-RZF overtakes the
-   no-RIS baseline between M=64 and M=128.
+   with M (coherent M-element combining, ~M^2 in SNR -- see the sanity
+   check in `docs/ASSUMPTIONS.md`); the random-phase curve grows much more
+   slowly (incoherent, ~M-fold combining only). AO-RIS overtakes the AF
+   relay by M~128 (K=1) but does not catch the no-RIS baseline within the
+   assignment's own M=16..256 sweep range for K=1 (empirically it needs
+   M on the order of 1000+ in this geometry -- see
+   `docs/ASSUMPTIONS.md`). For K=4, the story is different: random-phase
+   and both AO precoders visibly bend upward with M, while no-RIS (M
+   -independent) stays flat -- the steep AO-RIS growth trend is the
+   headline result of this plot either way.
 3. **AO convergence** (`exp3_convergence_K1/K4.png`): the rate increases
    monotonically with AO iteration from every random initialisation and
    converges within a handful of iterations, for both K=1 (closed form)
