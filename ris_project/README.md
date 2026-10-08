@@ -156,6 +156,25 @@ the physical interpretation of each. Headline numbers are in
    the dedicated absorption panel isolates the molecular-absorption
    contribution, which is comparatively small at these (tens-of-metres)
    distances but grows with both frequency and distance, as expected.
+7. **DRL demo, optional** (`exp7_drl_learning_curve.png`): SAC was trained
+   for 40,000 steps (K=1, M=16), completing in 639.6 s, well inside the
+   15-minute budget when run without other heavy processes competing for
+   CPU. Result: AO (closed-form) oracle mean rate ≈3.09 bit/s/Hz,
+   random-phase baseline ≈0.69 bit/s/Hz, SAC's final smoothed rate ≈0.63
+   bit/s/Hz -- SAC did not even match the random-phase baseline, let alone
+   approach the AO oracle (**≈80% gap**). The learning curve shows no
+   upward trend over the full run; it just oscillates around the
+   random-phase line. This is reported plainly as a negative result, not
+   tuned further, per the master prompt's framing of this milestone as a
+   proof of concept: each episode is a single step (no temporal credit
+   assignment for the agent to exploit) and the reward landscape (coherent
+   phase alignment across M=16 dimensions) is a narrow, non-convex optimum
+   that off-the-shelf continuous-control RL struggles to find from scratch
+   without reward shaping or curriculum. See `docs/ASSUMPTIONS.md` for the
+   full writeup, including that this same qualitative finding reproduced
+   across two separate training runs (before and after the channel-model
+   fix below), which is further evidence it reflects the RL setup rather
+   than a one-off fluke.
 
 ## Limitations
 
