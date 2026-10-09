@@ -143,6 +143,63 @@ cleaner and more reassuring result than either fix alone would have given.
   scenario to much longer ranges (where Milestone 3's own frequency
   sweep shows the models diverge more), this decision should be revisited.
 
+## Phase 2, Milestone 4: discrete RIS phase shifts (hardware limitation)
+
+- `hardware.py`: `quantize_phase` rounds to the nearest of 2^bits levels;
+  `quantized_coordinate_refine` does a simple per-element coordinate
+  descent over the discrete levels afterward (a few rounds, stops early
+  if nothing changes) to recover some of the quantization loss. Verified:
+  quantized rate <= continuous bound always, gap shrinks monotonically as
+  bits increase (1->4), refinement never makes it worse.
+- Measured gap to the continuous bound (K=1, Ptx=30 dBm, 200 draws):
+  at M=64, 1-bit costs ~1.1 bit/s/Hz (continuous ≈11.6), 4-bit costs
+  ~0.02; at M=256, the pattern is the same shape at a higher baseline.
+  Refinement recovers only a small fraction of the plain-quantization
+  gap (a few hundredths of a bit/s/Hz) -- most of the loss is inherent
+  to the coarse angle grid itself, not to a bad choice of which grid
+  point to round to.
+- **Effect on the RIS-vs-relay crossover: none in practice.** Even at the
+  coarsest tested setting (1-bit, M=64), AO-RIS's rate (~9.5-10.3
+  bit/s/Hz depending on exact draw) still comfortably exceeds the AF
+  relay's (~7.7-8.0) -- quantization narrows the margin but the margin
+  established in Milestone 0 (continuous phases) was large enough that
+  1-bit control doesn't erase it at these M values. See
+  `plots/exp_hw_quantization_M{64,256}.png`.
+
+## Phase 2, Milestone 5: imperfect CSI
+
+- Standard additive-error model (assumption): Hhat = H + E_H,
+  ghat = g + E_g, each error entry i.i.d. complex Gaussian with variance
+  epsilon * mean(|true entry|^2) (computed separately for H and g, since
+  they have different power levels) -- see `csi_error.py`.
+- AO is run using ONLY the estimates (Hhat, ghat); the resulting (theta,
+  W) is then evaluated against the TRUE (H, g) to get the actually
+  achieved rate. Verified the expected (and required, per the Phase 2
+  spec's sanity checks) behaviour: the rate AO *thinks* it achieved (on
+  the noisy estimate) actually INCREASES with epsilon (the optimizer is
+  fooled by channel-shaped noise into overestimating its own performance
+  -- consistent with how any optimizer overfits the information it is
+  given), while the TRUE achieved rate (what you actually get) decreases
+  monotonically with epsilon, confirmed numerically (K=1, M=64, Ptx=30
+  dBm, a representative single instance: estimate-rate rises 10.58 ->
+  10.99 from epsilon=0 to 0.5, true rate falls 10.58 -> 10.10 over the
+  same range).
+- "Robust-ish" RZF (`csi_error.rzf_robust`, used via `ao.run_ao(...,
+  mode="rzf_robust", epsilon=...)`, extending `ao.py`'s existing mode
+  dispatch rather than duplicating the AO loop): inflates the usual RZF
+  regulariser by the estimated channel-error power
+  (`K*(sigma2 + epsilon*mean(|Hhat_eff|^2))/P`), a standard MMSE-under-
+  estimation-error heuristic (the error behaves like extra effective
+  noise). Verified it helps: at K=4, M=64, epsilon=0.1, true rate 4.21
+  (plain RZF) vs 4.33 (robust); at epsilon=0.3, 2.61 vs 2.75.
+- Rate-vs-M at a fixed epsilon=0.1 shows CSI error erodes, but does not
+  eliminate, the ~M^2 scaling established in Milestone 0 -- larger M
+  still helps, just less than the perfect-CSI curve predicts (the error
+  variance itself doesn't shrink with M, so a larger RIS gives AO *more*
+  parameters to get subtly wrong, while also providing more coherent-
+  combining gain; the net effect in this setup is still a net positive
+  from larger M, just at a discount).
+
 ## Geometry
 
 - BS at (0, 0, 10) m, RIS at (20, 10, 10) m (given in the master prompt) ->

@@ -22,8 +22,8 @@ from metrics import effective_channel, sum_rate
 
 def run_ao(H: np.ndarray, G: np.ndarray, P: float, sigma2: float, mode: str,
            theta0: np.ndarray | None = None, max_iter: int = 20, tol: float = 1e-4,
-           manifold_iters: int = 50) -> tuple:
-    """mode in {"mrt" (K=1), "zf", "rzf"} (K>1). manifold_iters caps the inner
+           manifold_iters: int = 50, epsilon: float = 0.0) -> tuple:
+    """mode in {"mrt" (K=1), "zf", "rzf", "rzf_robust"} (K>1). manifold_iters caps the inner
     Riemannian-ascent budget per outer AO iteration (unused for mode="mrt",
     which has a closed-form theta update); lowering it trades a little
     per-iteration accuracy for speed in large Monte-Carlo sweeps, since the
@@ -36,6 +36,10 @@ def run_ao(H: np.ndarray, G: np.ndarray, P: float, sigma2: float, mode: str,
     theta0 (e.g. exp3_convergence.py's 5 random inits) when a script's
     claim is specifically about initialisation sensitivity; don't claim
     "random initialisation" for a sweep that relies on this default.
+
+    epsilon: only used by mode="rzf_robust" (Phase 2 Milestone 5) -- the
+    estimated CSI-error level, inflating the RZF regulariser via
+    csi_error.rzf_robust instead of the plain rzf(). Ignored otherwise.
 
     Returns (theta, W, rate_history)."""
     M, Nt = H.shape
@@ -53,6 +57,9 @@ def run_ao(H: np.ndarray, G: np.ndarray, P: float, sigma2: float, mode: str,
             W = zf(H_eff, P)
         elif mode == "rzf":
             W = rzf(H_eff, P, sigma2)
+        elif mode == "rzf_robust":
+            from csi_error import rzf_robust  # local import: avoids a hard dependency for callers who never use this mode
+            W = rzf_robust(H_eff, P, sigma2, epsilon)
         else:
             raise ValueError(f"unknown AO mode: {mode}")
         return W, H_eff
