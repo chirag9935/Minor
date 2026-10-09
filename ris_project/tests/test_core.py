@@ -19,6 +19,10 @@ from ris_opt import phase_update_single_user, phase_update_manifold
 from metrics import effective_channel, sum_rate
 from ao import run_ao
 from benchmarks import no_ris_rate
+from objective_b import (
+    min_power_single_user, required_power_single_user, zf_min_power_precoder,
+    min_power_zf, is_outage,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -306,6 +310,75 @@ def test_rate_increases_with_M():
             rs.append(hist[-1])
         rates.append(np.mean(rs))
     assert rates[0] < rates[1] < rates[2]
+
+
+# ---------------------------------------------------------------------------
+# Phase 2, Milestone 1: objective_b.py (Objective B, min-power)
+# ---------------------------------------------------------------------------
+
+def test_objective_b_k1_achieves_target_sinr_exactly():
+    cfg, H, G = _make_k1_instance(seed=1)
+    gamma = 10 ** (10 / 10)
+    sigma2 = cfg.noise_power_w
+    theta, W, P_req = min_power_single_user(H, G, gamma, sigma2)
+    h_eff = effective_channel(G, H, theta)[0]
+    achieved = np.abs(h_eff @ W)[0] ** 2 / sigma2
+    assert np.isclose(achieved, gamma, rtol=1e-6)
+    assert np.isclose(np.linalg.norm(W) ** 2, P_req)
+    # closed-form vs direct computation
+    assert np.isclose(P_req, gamma * sigma2 / np.sum(np.abs(h_eff) ** 2))
+
+
+def test_objective_b_zf_closed_form_matches_direct_computation():
+    """Required test (Phase 2 spec): closed-form power vs direct computation."""
+    cfg, H, G = _make_k4_instance(seed=2)
+    gamma = 10 ** (10 / 10)
+    sigma2 = cfg.noise_power_w
+    theta0 = np.ones(cfg.M, dtype=complex)
+    H_eff = effective_channel(G, H, theta0)
+
+    W, P_closed_form = zf_min_power_precoder(H_eff, gamma, sigma2)
+
+    # direct computation: achieved SINR, ||W||_F^2, and trace((H H^H)^-1) by hand
+    received = H_eff @ W
+    sinr = np.abs(np.diag(received)) ** 2 / sigma2
+    assert np.allclose(sinr, gamma, rtol=1e-6)
+    assert np.isclose(np.linalg.norm(W, "fro") ** 2, P_closed_form)
+
+    gram_inv = np.linalg.inv(H_eff @ H_eff.conj().T)
+    P_direct = gamma * sigma2 * np.real(np.trace(gram_inv))
+    assert np.isclose(P_closed_form, P_direct)
+
+
+def test_objective_b_zf_power_history_nonincreasing():
+    cfg, H, G = _make_k4_instance(seed=3)
+    gamma = 10 ** (10 / 10)
+    sigma2 = cfg.noise_power_w
+    theta, W, P_req, hist = min_power_zf(H, G, gamma, sigma2, max_iter=10)
+    assert np.all(np.diff(hist) <= 1e-9)
+    H_eff = effective_channel(G, H, theta)
+    received = H_eff @ W
+    sinr = np.abs(np.diag(received)) ** 2 / sigma2
+    assert np.allclose(sinr, gamma, rtol=1e-6)
+
+
+def test_objective_b_required_power_nonincreasing_in_M():
+    """Required sanity check (Phase 2 spec): required power is non-increasing
+    in M (more RIS elements can only help reduce the power needed)."""
+    cfg, H, G = _make_k1_instance(seed=4, M=16)
+    gamma = 10 ** (10 / 10)
+    sigma2 = cfg.noise_power_w
+    _, _, P16 = min_power_single_user(H, G, gamma, sigma2)
+
+    cfg2, H2, G2 = _make_k1_instance(seed=4, M=64)
+    _, _, P64 = min_power_single_user(H2, G2, gamma, sigma2)
+
+    assert P64 <= P16
+
+
+def test_objective_b_outage_flag():
+    assert is_outage(P_required=10.0, Pmax=5.0) is True
+    assert is_outage(P_required=3.0, Pmax=5.0) is False
 
 
 if __name__ == "__main__":
