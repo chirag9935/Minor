@@ -4,6 +4,96 @@ Every numeric choice here that is not a standard physical constant is an
 assumption, made explicit so a reader can tell "assumption" from "result".
 Corresponding code lives mostly in `config.py` and `channel.py`.
 
+## Phase 2, Milestone 0: post-mid-eval audit and fixes
+
+The mid-evaluation review of Phase 1 flagged several issues. This section
+records what was found and what changed; see `RIS_Phase2_Prompt.md` for
+the original audit instructions.
+
+**(a) "Blocked" wasn't blocked enough.** At Phase 1's `blockage_loss_db=40`,
+the un-optimized direct link (no-RIS) had the *highest* rate of all four
+schemes at K=1, M=64, Ptx=30 dBm -- beating both AO-RIS and the AF relay.
+That's inconsistent with "completely blocked." `experiments/exp_blockage_sweep.py`
+sweeps blockage_loss_db in {0,20,40,60,80,100} dB at M in {64,256} and
+finds the AO-RIS/no-RIS crossover sits at **80 dB for M=64** and **60 dB
+for M=256** (full 200-draw results; see `plots/exp_blockage_sweep_M{64,256}.png`).
+The AF relay crossover essentially never happens vs blockage, by
+construction -- the relay sits at the RIS location, not behind the
+blocker, so its rate is blockage-independent; only no-RIS responds to this
+parameter. **New default: `blockage_loss_db=80`**, representing a
+genuinely severe obstruction. The old 40 dB value is preserved and
+reproducible, not deleted -- Phase 1's exact numbers live on as the
+`*_blocked40.npz`/`.png` files in `results/`/`plots/` (`Config(blockage_loss_db=40.0)`
+regenerates them). "Partially blocked" (40 dB) vs "completely blocked"
+(80 dB, new default) are both legitimate scenarios; only the *label* and
+default changed, not the modelling capability.
+
+**(b) M-sweep range.** The assignment's own M range is 16/32/64/128/256;
+`experiments/exp2_rate_vs_M.py` already used exactly that (Phase 1 was
+correct here) and is unchanged. The *extended* 64-1024 crossover view
+(`experiments/exp2b_crossover.py`, added for the mid-eval panel) is kept
+as a clearly-separate, clearly-labelled "bonus" experiment -- it was never
+presented as satisfying the assignment's own M range requirement, which
+exp2 already does on its own.
+
+**(c) exp5/exp6 status.** Both already run and produce figures with a
+one-sentence physical-interpretation takeaway in the README's Results
+section (items 5 and 6) -- confirmed present, no gap found here.
+
+**(d) Number consistency.** `results/summary.csv` is the single source of
+truth for every headline number; any number quoted in slides or the
+README should be checked against it, not re-derived or approximated from
+memory. (We don't have access to the actual mid-eval slide deck to check
+specific quoted figures like "4.4x" vs "2-4x" against -- if a
+specific discrepancy is found, trace it to the exact summary.csv row
+and Ptx/M operating point before changing either the slide or the code.)
+
+**(e) Absolute-rate realism / gain calibration.** Phase 1's calibrated
+gains (`bs_gain_dbi=45`, `ue_gain_dbi=25`) are deliberately high (see
+below) to hit a 15-25 dB SNR target at M=64 given the severe cascaded RIS
+path loss -- but that also meant the *no-RIS* link (which doesn't pay the
+cascaded-path-loss penalty) could reach ~14 bit/s/Hz at 40 dB blockage,
+implying a ~40 dB link SNR, unrealistically high for a real deployment. A
+new **`Config.realistic()`** preset (`bs_gain_dbi=25`, `ue_gain_dbi=10`,
+closer to typical real hardware) is added alongside the default, not
+instead of it -- see the classmethod's docstring in `config.py` for the
+full reasoning and the measured peak-rate numbers for each preset.
+
+**(f) Initial RIS phase.** `run_ao`'s `theta0=None` default starts AO from
+`theta = all-ones` (zero phase everywhere), *not* a random initialisation.
+Only `experiments/exp3_convergence.py` genuinely uses random per-trial
+initialisations (and correctly labels them as such); no other experiment
+claims "random initialisation" while relying on the default -- confirmed
+by inspection, no code change was needed here beyond documenting the
+default explicitly in `ao.py`'s docstring.
+
+## A second, more severe bug found while fixing Milestone 0 (MRT precoder)
+
+While investigating item (a) above, a second, independent, and more
+consequential bug was found and fixed: `beamforming.py`'s `mrt()` computed
+`w = h_eff / ||h_eff||` (no conjugate). Since `h_eff` (per
+`effective_channel`'s convention) already stores `h^H`'s entries, the
+textbook matched-filter result (Cauchy-Schwarz: `|h^H w| <= ||h||*||w||`,
+equality iff `w` is proportional to `h` itself) requires
+`w = conj(h_eff) / ||h_eff||`. The unconjugated version is a genuinely
+suboptimal direction, not just a different convention -- verified three
+ways: (1) direct comparison against the closed-form optimum
+`P*||h||^2`, (2) a brute-force search over 200,000 random candidate
+directions, which the "fixed" direction beat and the buggy one did not,
+and (3) a Monte Carlo estimate that the buggy direction achieves only
+**~22% of the optimal SINR on average** (~6-7 dB loss), a ~30%+ rate
+underestimate at typical operating SNRs. This affected **every K=1 (MRT)
+result across the entire project** -- K>1 (ZF/RZF, which correctly used
+`.conj().T`) and the manifold phase optimizer were unaffected (confirmed
+by inspection and by the fact that K=4 results didn't move when this fix
+was applied). Fixed in `beamforming.py`; locked in by
+`test_mrt_achieves_optimal_snr` (exact closed-form check, not just a power-
+constraint check). All K=1 experiments were re-run; see Milestone 0 above
+for the combined effect with the blockage fix -- together they change the
+exp1/exp2 K=1 headline story substantially: AO-RIS now wins decisively at
+*every* M tested (64 through 1024), not just at very large M, which is a
+cleaner and more reassuring result than either fix alone would have given.
+
 ## Geometry
 
 - BS at (0, 0, 10) m, RIS at (20, 10, 10) m (given in the master prompt) ->

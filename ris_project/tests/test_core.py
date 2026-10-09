@@ -145,6 +145,26 @@ def _make_k4_instance(seed=0, M=64, Nt=8, K=4):
 # Milestone 2: beamforming.py, ris_opt.py, ao.py
 # ---------------------------------------------------------------------------
 
+def test_mrt_achieves_optimal_snr():
+    """Phase 2, Milestone 0: regression test for a real bug -- an earlier
+    mrt() used w = h_eff/||h_eff|| (no conjugate), achieving only ~22% of
+    the optimal SINR on average (~6-7 dB loss). By Cauchy-Schwarz, the
+    true optimum is |h^H w|^2 = P*||h||^2 exactly, achieved by
+    w = conj(h_eff)/||h_eff|| (h_eff IS h^H, per effective_channel's
+    convention). Verified against brute-force random search over 200k
+    candidate directions in development; this test pins the exact
+    closed-form value so a regression is caught immediately."""
+    rng = np.random.default_rng(123)
+    for _ in range(20):
+        h_eff = (rng.standard_normal(8) + 1j * rng.standard_normal(8)).reshape(1, 8)
+        P = 5.0
+        sigma2 = 1.0
+        w = mrt(h_eff[0], P)
+        achieved = np.abs((h_eff @ w)[0, 0]) ** 2
+        optimal = P * np.sum(np.abs(h_eff) ** 2)
+        assert np.isclose(achieved, optimal, rtol=1e-9), f"achieved={achieved}, optimal={optimal}"
+
+
 def test_beamformers_satisfy_power_constraint():
     cfg, H, G = _make_k1_instance()
     h_eff = effective_channel(G, H, np.ones(cfg.M, dtype=complex))[0]

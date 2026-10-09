@@ -20,13 +20,18 @@ M_CONFIGS = [(16, (4, 4)), (32, (8, 4)), (64, (8, 8)), (128, (8, 16)), (256, (16
 M_VALUES = np.array([m for m, _ in M_CONFIGS])
 
 
-def sweep_k1():
+def _make_cfg(preset: str, **kwargs) -> Config:
+    """preset in {"default", "realistic"} -- see Config.realistic(). Phase 2 Milestone 0(e)."""
+    return Config.realistic(**kwargs) if preset == "realistic" else Config(**kwargs)
+
+
+def sweep_k1(preset: str = "default"):
     names = ["AO-RIS", "Random-phase", "No-RIS", "AF relay"]
     rates = {k: np.zeros(len(M_CONFIGS)) for k in names}
-    for mi, (M, (Mx, My)) in enumerate(tqdm(M_CONFIGS, desc="exp2 K=1")):
+    for mi, (M, (Mx, My)) in enumerate(tqdm(M_CONFIGS, desc=f"exp2 K=1 ({preset})")):
         acc = {k: [] for k in names}
         for i in range(N_DRAWS):
-            cfg = Config(K=1, Mx=Mx, My=My, Pmax_dBm=PTX_DBM)
+            cfg = _make_cfg(preset, K=1, Mx=Mx, My=My, Pmax_dBm=PTX_DBM)
             rng = cfg.rng(i)
             ue_pos = get_ue_positions(cfg, rng)
             H = sv_channel_H(cfg, rng)
@@ -44,13 +49,13 @@ def sweep_k1():
     return rates
 
 
-def sweep_k4():
+def sweep_k4(preset: str = "default"):
     names = ["AO-ZF", "AO-RZF", "Random-phase", "No-RIS"]
     rates = {k: np.zeros(len(M_CONFIGS)) for k in names}
-    for mi, (M, (Mx, My)) in enumerate(tqdm(M_CONFIGS, desc="exp2 K=4")):
+    for mi, (M, (Mx, My)) in enumerate(tqdm(M_CONFIGS, desc=f"exp2 K=4 ({preset})")):
         acc = {k: [] for k in names}
         for i in range(N_DRAWS):
-            cfg = Config(K=4, Mx=Mx, My=My, Pmax_dBm=PTX_DBM)
+            cfg = _make_cfg(preset, K=4, Mx=Mx, My=My, Pmax_dBm=PTX_DBM)
             rng = cfg.rng(i)
             ue_pos = get_ue_positions(cfg, rng)
             H = sv_channel_H(cfg, rng)
@@ -69,27 +74,32 @@ def sweep_k4():
     return rates
 
 
-def main():
-    print("Running exp2: rate vs M (K=1) ...")
-    k1 = sweep_k1()
+def main(preset: str = "default"):
+    """preset in {"default", "realistic"}; see exp1_rate_vs_power.main() for
+    the same convention. Output files suffixed "_realistic" for that preset."""
+    suffix = "" if preset == "default" else f"_{preset}"
+    title_suffix = "" if preset == "default" else f", {preset} gains"
+
+    print(f"Running exp2: rate vs M (K=1, {preset}) ...")
+    k1 = sweep_k1(preset)
     fig, ax = new_fig()
     for name in ["AO-RIS", "Random-phase", "No-RIS", "AF relay"]:
         ax.plot(M_VALUES, k1[name], marker=MARKERS[name], color=COLORS[name], label=name)
     ax.set_xscale("log", base=2)
-    style_and_save(fig, ax, "exp2_rate_vs_M_K1", "Number of RIS elements M", "Sum rate [bit/s/Hz]",
-                   title="Rate vs M (K=1, Ptx=30 dBm)")
-    save_results("exp2_rate_vs_M_K1", M=M_VALUES, **k1)
+    style_and_save(fig, ax, f"exp2_rate_vs_M_K1{suffix}", "Number of RIS elements M", "Sum rate [bit/s/Hz]",
+                   title=f"Rate vs M (K=1, Ptx=30 dBm{title_suffix})")
+    save_results(f"exp2_rate_vs_M_K1{suffix}", M=M_VALUES, **k1)
 
-    print("Running exp2: rate vs M (K=4) ...")
-    k4 = sweep_k4()
+    print(f"Running exp2: rate vs M (K=4, {preset}) ...")
+    k4 = sweep_k4(preset)
     fig, ax = new_fig()
     for name in ["AO-ZF", "AO-RZF", "Random-phase", "No-RIS"]:
         ax.plot(M_VALUES, k4[name], marker=MARKERS[name], color=COLORS[name], label=name)
     ax.set_xscale("log", base=2)
-    style_and_save(fig, ax, "exp2_rate_vs_M_K4", "Number of RIS elements M", "Sum rate [bit/s/Hz]",
-                   title="Rate vs M (K=4, Ptx=30 dBm)")
-    save_results("exp2_rate_vs_M_K4", M=M_VALUES, **k4)
-    print("exp2 done.")
+    style_and_save(fig, ax, f"exp2_rate_vs_M_K4{suffix}", "Number of RIS elements M", "Sum rate [bit/s/Hz]",
+                   title=f"Rate vs M (K=4, Ptx=30 dBm{title_suffix})")
+    save_results(f"exp2_rate_vs_M_K4{suffix}", M=M_VALUES, **k4)
+    print(f"exp2 ({preset}) done.")
 
 
 if __name__ == "__main__":

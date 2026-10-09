@@ -20,13 +20,19 @@ N_DRAWS = 200
 PTX_DBM = np.arange(0, 31, 5)
 
 
-def sweep_k1():
+def _make_cfg(preset: str, **kwargs) -> Config:
+    """preset in {"default", "realistic"} -- see Config.realistic() for what
+    changes (lower, more typical antenna gains). Phase 2 Milestone 0(e)."""
+    return Config.realistic(**kwargs) if preset == "realistic" else Config(**kwargs)
+
+
+def sweep_k1(preset: str = "default"):
     names = ["AO-RIS", "Random-phase", "No-RIS", "AF relay"]
     rates = {k: np.zeros(len(PTX_DBM)) for k in names}
-    for pi, ptx_dbm in enumerate(tqdm(PTX_DBM, desc="exp1 K=1")):
+    for pi, ptx_dbm in enumerate(tqdm(PTX_DBM, desc=f"exp1 K=1 ({preset})")):
         acc = {k: [] for k in names}
         for i in range(N_DRAWS):
-            cfg = Config(K=1, Pmax_dBm=float(ptx_dbm))
+            cfg = _make_cfg(preset, K=1, Pmax_dBm=float(ptx_dbm))
             rng = cfg.rng(i)
             ue_pos = get_ue_positions(cfg, rng)
             H = sv_channel_H(cfg, rng)
@@ -44,13 +50,13 @@ def sweep_k1():
     return rates
 
 
-def sweep_k4():
+def sweep_k4(preset: str = "default"):
     names = ["AO-ZF", "AO-RZF", "Random-phase", "No-RIS"]
     rates = {k: np.zeros(len(PTX_DBM)) for k in names}
-    for pi, ptx_dbm in enumerate(tqdm(PTX_DBM, desc="exp1 K=4")):
+    for pi, ptx_dbm in enumerate(tqdm(PTX_DBM, desc=f"exp1 K=4 ({preset})")):
         acc = {k: [] for k in names}
         for i in range(N_DRAWS):
-            cfg = Config(K=4, Pmax_dBm=float(ptx_dbm))
+            cfg = _make_cfg(preset, K=4, Pmax_dBm=float(ptx_dbm))
             rng = cfg.rng(i)
             ue_pos = get_ue_positions(cfg, rng)
             H = sv_channel_H(cfg, rng)
@@ -69,25 +75,33 @@ def sweep_k4():
     return rates
 
 
-def main():
-    print("Running exp1: rate vs Ptx (K=1) ...")
-    k1 = sweep_k1()
+def main(preset: str = "default"):
+    """preset in {"default", "realistic"}. The default preset is the one run
+    by `python -m experiments.exp1_rate_vs_power`; run the realistic preset
+    separately (e.g. `python -c "import experiments.exp1_rate_vs_power as e; e.main('realistic')"`)
+    -- kept as an opt-in second run rather than doubling every default run's
+    cost. Output files are suffixed "_realistic" for that preset."""
+    suffix = "" if preset == "default" else f"_{preset}"
+    title_suffix = "" if preset == "default" else f", {preset} gains"
+
+    print(f"Running exp1: rate vs Ptx (K=1, {preset}) ...")
+    k1 = sweep_k1(preset)
     fig, ax = new_fig()
     for name in ["AO-RIS", "Random-phase", "No-RIS", "AF relay"]:
         ax.plot(PTX_DBM, k1[name], marker=MARKERS[name], color=COLORS[name], label=name)
-    style_and_save(fig, ax, "exp1_rate_vs_power_K1", "Transmit power $P_{tx}$ [dBm]", "Sum rate [bit/s/Hz]",
-                   title="Rate vs Ptx (K=1)")
-    save_results("exp1_rate_vs_power_K1", ptx_dbm=PTX_DBM, **k1)
+    style_and_save(fig, ax, f"exp1_rate_vs_power_K1{suffix}", "Transmit power $P_{tx}$ [dBm]", "Sum rate [bit/s/Hz]",
+                   title=f"Rate vs Ptx (K=1{title_suffix})")
+    save_results(f"exp1_rate_vs_power_K1{suffix}", ptx_dbm=PTX_DBM, **k1)
 
-    print("Running exp1: rate vs Ptx (K=4) ...")
-    k4 = sweep_k4()
+    print(f"Running exp1: rate vs Ptx (K=4, {preset}) ...")
+    k4 = sweep_k4(preset)
     fig, ax = new_fig()
     for name in ["AO-ZF", "AO-RZF", "Random-phase", "No-RIS"]:
         ax.plot(PTX_DBM, k4[name], marker=MARKERS[name], color=COLORS[name], label=name)
-    style_and_save(fig, ax, "exp1_rate_vs_power_K4", "Transmit power $P_{tx}$ [dBm]", "Sum rate [bit/s/Hz]",
-                   title="Rate vs Ptx (K=4)")
-    save_results("exp1_rate_vs_power_K4", ptx_dbm=PTX_DBM, **k4)
-    print("exp1 done.")
+    style_and_save(fig, ax, f"exp1_rate_vs_power_K4{suffix}", "Transmit power $P_{tx}$ [dBm]", "Sum rate [bit/s/Hz]",
+                   title=f"Rate vs Ptx (K=4{title_suffix})")
+    save_results(f"exp1_rate_vs_power_K4{suffix}", ptx_dbm=PTX_DBM, **k4)
+    print(f"exp1 ({preset}) done.")
 
 
 if __name__ == "__main__":

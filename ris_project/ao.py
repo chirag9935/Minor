@@ -27,8 +27,17 @@ def run_ao(H: np.ndarray, G: np.ndarray, P: float, sigma2: float, mode: str,
     Riemannian-ascent budget per outer AO iteration (unused for mode="mrt",
     which has a closed-form theta update); lowering it trades a little
     per-iteration accuracy for speed in large Monte-Carlo sweeps, since the
-    outer AO loop revisits theta on every iteration anyway. Returns
-    (theta, W, rate_history)."""
+    outer AO loop revisits theta on every iteration anyway.
+
+    theta0=None (the default) starts AO from theta = all-ones (every RIS
+    element at zero phase), NOT a random initialisation -- most
+    experiments use this default (only the channel draw is randomised
+    across Monte Carlo trials, not the phase init). Pass an explicit
+    theta0 (e.g. exp3_convergence.py's 5 random inits) when a script's
+    claim is specifically about initialisation sensitivity; don't claim
+    "random initialisation" for a sweep that relies on this default.
+
+    Returns (theta, W, rate_history)."""
     M, Nt = H.shape
     if theta0 is None:
         theta = np.ones(M, dtype=complex)

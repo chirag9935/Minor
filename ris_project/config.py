@@ -57,11 +57,22 @@ class Config:
 
     # ----- blocked direct link (assumption) -----
     # The BS->UE direct link is "completely blocked" per the assignment.
-    # We keep it finite (so the no-RIS benchmark is plottable) by adding a
-    # fixed penetration/blockage loss on top of ordinary free-space path
-    # loss. 40 dB is a typical value for a building-wall / foliage NLoS
-    # penetration loss at mmWave/THz frequencies.
-    blockage_loss_db: float = 40.0
+    # We keep it finite (so the no-RIS benchmark is plottable, rather than
+    # exactly zero) by adding a fixed penetration/blockage loss on top of
+    # ordinary free-space path loss.
+    #
+    # PHASE 2 CHANGE (see docs/ASSUMPTIONS.md "Milestone 0"): the Phase 1
+    # default of 40 dB was too weak to represent "completely blocked" --
+    # at 40 dB the un-optimized direct link (no-RIS) still beat both
+    # AO-RIS and the AF relay (see exp_blockage_sweep.py). A sweep over
+    # 0-100 dB shows the AO-RIS/no-RIS crossover sits between 60-80 dB in
+    # this geometry; 80 dB is the new default, representing a genuinely
+    # severe obstruction (thick wall / deep NLoS), consistent with
+    # "completely blocked." The old 40 dB value is kept reproducible as an
+    # explicit "partially blocked" comparison point (see
+    # exp_blockage_sweep.py and the *_blocked40 result/plot files), not
+    # deleted, so Phase 1's numbers can still be regenerated.
+    blockage_loss_db: float = 80.0
 
     # ----- antenna gains (assumption, calibrated) -----
     # Chosen so that for K=1, M=64, Ptx=30 dBm at 140 GHz, the mean AO SNR
@@ -141,3 +152,27 @@ class Config:
     def rng(self, extra_seed: int = 0) -> np.random.Generator:
         """Seeded RNG. Pass extra_seed to get an independent-but-reproducible stream."""
         return np.random.default_rng(self.seed + extra_seed)
+
+    @classmethod
+    def realistic(cls, **kwargs) -> "Config":
+        """Alternative preset (Phase 2, Milestone 0 item e): more modest,
+        typical-hardware antenna gains (bs_gain_dbi=25, ue_gain_dbi=10 --
+        closer to a real mmWave sector antenna / UE phased array) instead
+        of the default preset's deliberately high gains (45/25 dBi, chosen
+        so AO-RIS reaches ~20 dB SNR at the assignment's default M=64 given
+        the severe cascaded RIS path loss -- see docs/ASSUMPTIONS.md).
+        Peak sum rate across schemes at K=1, M=64, Ptx=30 dBm, 140 GHz is
+        ~5.2 bit/s/Hz under this preset (vs ~7.7 bit/s/Hz for the default
+        preset), i.e. a plausible-SNR regime (well under the ~40 dB SNR
+        implied by the Phase 1 mid-eval's ~14 bit/s/Hz rates).
+
+        The *default* preset (plain `Config(...)`) stays the project's
+        default because it is the one calibrated, per the master prompt's
+        explicit instruction, to land AO-RIS's SNR in the requested
+        15-25 dB band at the assignment's own M=64 -- `realistic` is kept
+        alongside it as an explicit lower-gain sensitivity point, not a
+        replacement; both are re-run and both results are kept in
+        results/ (see exp1/exp2's *_realistic variants)."""
+        kwargs.setdefault("bs_gain_dbi", 25.0)
+        kwargs.setdefault("ue_gain_dbi", 10.0)
+        return cls(**kwargs)

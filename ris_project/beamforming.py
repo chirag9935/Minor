@@ -17,11 +17,17 @@ import numpy as np
 def mrt(h_eff: np.ndarray, P: float) -> np.ndarray:
     """Maximum-ratio transmission for a single user.
 
-    w = sqrt(P) * h_eff / ||h_eff||, shape (Nt, 1). Optimal (matched-filter)
-    precoder for K=1 since there is no interference to manage.
+    h_eff is h^H as a 1D array (the row produced by effective_channel's
+    convention: h_eff[n] = conj(h)_n). By Cauchy-Schwarz, |h^H w| <= ||h|| *
+    ||w|| with equality iff w is proportional to h itself (NOT to h^H) --
+    so w = sqrt(P) * conj(h_eff) / ||h_eff||, shape (Nt, 1). This is the
+    textbook matched-filter precoder, achieving |h^H w|^2 = P*||h||^2
+    exactly (verified: w ∝ h_eff without the conjugate -- an earlier,
+    incorrect version of this function -- under-achieves the optimal SINR
+    by ~6-7 dB on average; see docs/ASSUMPTIONS.md, "Milestone 0").
     """
     h_eff = h_eff.reshape(-1, 1)
-    w = h_eff / np.linalg.norm(h_eff)
+    w = np.conj(h_eff) / np.linalg.norm(h_eff)
     return np.sqrt(P) * w
 
 
