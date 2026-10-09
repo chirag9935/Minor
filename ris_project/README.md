@@ -3,34 +3,48 @@
 A student-explainable simulation of a Reconfigurable Intelligent Surface
 (RIS) assisting a downlink mmWave/THz link whose direct line-of-sight is
 blocked, solved with Alternating Optimization (AO) between BS active
-beamforming and RIS passive phase shifts. Built per `RIS_Master_Prompt.md`,
-implementing a defined subset of the full assignment in
-`RIS_Communication_Project_Workflow.md` (see the mapping table below).
+beamforming and RIS passive phase shifts.
+
+**Phase 1** (`RIS_Master_Prompt.md`) implemented a defined subset of the
+full assignment (`RIS_Communication_Project_Workflow.md`) and was
+presented at the mid-evaluation (tag `phase1-midsem`). **Phase 2**
+(`RIS_Phase2_Prompt.md`, in progress) audits and fixes Phase 1 issues and
+completes the remaining assignment milestones (Objective B, Objective C,
+realistic absorption, hardware/CSI impairments, multi-K, SDR, DRL, paper
+draft). *This table and the rest of the README are being updated
+progressively as Phase 2 milestones land -- see `docs/ASSUMPTIONS.md` for
+the most current, detailed status of what's done.*
 
 ## Assignment-step -> file mapping
 
 | Step | Assignment topic | Implemented in | Status |
 |---|---|---|---|
 | 1 | System model & scenario definition | `config.py`, `channel.py` | Done |
-| 2 | Optimization problem formulation | `metrics.py` (SINR/rate), `beamforming.py`/`ris_opt.py` (constraints) | Done (Option A only; Option B min-power out of scope) |
-| 3 | Algorithm design | `ao.py`, `ris_opt.py`, `beamforming.py` | Done (Approach A / AO with ZF-MMSE + manifold optimization; SDR and Approach B/DRL for the *joint* problem out of scope; see exp7 for an optional single-user DRL proof of concept) |
+| 2 | Optimization problem formulation | `metrics.py` (SINR/rate), `beamforming.py`/`ris_opt.py` (Option A constraints), `objective_b.py` (Option B) | Done: Option A and Option B. Option C (EE) in `metrics.py`/`exp_objC_*` |
+| 3 | Algorithm design | `ao.py`, `ris_opt.py`, `beamforming.py`, `objective_b.py` | Done: AO with ZF/RZF + closed-form/manifold RIS phases (Option A), AO with ZF + closed-form/manifold-descent RIS phases (Option B). SDR and the *joint* DRL problem: SDR planned (Phase 2 Milestone 6); see exp7 for an optional single-user DRL proof of concept |
 | 4 | Implementation & simulation | all of the above + `benchmarks.py` | Done |
-| 5 | Result analysis & plots | `experiments/exp1`-`exp6`, `results/summary.csv` | Done |
-| 6 | Documentation & paper writing | this README, `docs/` | Partial (results + assumptions documented; no full paper manuscript written) |
+| 5 | Result analysis & plots | `experiments/exp1`-`exp6`, `exp_objB_*`, `exp_objC_*`, `results/summary.csv` | Done for Objectives A, B, C |
+| 6 | Documentation & paper writing | this README, `docs/` | Partial (results + assumptions documented; `paper/` LaTeX draft planned for Phase 2 Milestone 8) |
 
 ## Scope
 
-See `RIS_Master_Prompt.md` section 0 for the authoritative scope. In short:
-blocked-LoS, sparse Saleh-Valenzuela + THz molecular absorption channels,
-sum-rate maximization (Option A) with energy efficiency evaluated (not
-separately optimized), AO (MRT/ZF/RZF + closed-form/manifold RIS phases),
-three benchmarks, sensitivity sweeps over M/Ptx/distance/frequency, and an
-optional single-user DRL demo.
+Phase 1's scope (`RIS_Master_Prompt.md` section 0): blocked-LoS, sparse
+Saleh-Valenzuela + THz molecular absorption channels, sum-rate
+maximization (Option A), AO (MRT/ZF/RZF + closed-form/manifold RIS
+phases), three benchmarks, sensitivity sweeps over M/Ptx/distance/
+frequency, an optional single-user DRL demo. Phase 2 (`RIS_Phase2_Prompt.md`)
+adds: a post-mid-eval audit and bug-fix pass (Milestone 0); Objective B,
+min-power (Milestone 1); Objective C, energy efficiency optimization
+(Milestone 2); a realistic ITU-R-based absorption model (Milestone 3);
+discrete RIS phases (Milestone 4); imperfect CSI (Milestone 5); multi-K
+and SDR (Milestone 6); a time-boxed DRL study (Milestone 7); and a paper
+draft (Milestone 8). See `docs/ASSUMPTIONS.md` for what's done so far
+within Phase 2 and `RIS_Phase2_Prompt.md` for the full plan.
 
-**Out of scope** (per the master prompt, listed here as future work):
-SDR with Gaussian randomization, Objective B (min-power), realistic channel
-estimation, hardware impairments, multi-user DRL, DRL hyperparameter tuning
-to beat AO, full paper writing.
+**Still out of scope** (realistic channel estimation beyond Milestone 5's
+additive-error model, hardware impairments beyond Milestone 4's phase
+quantization, DRL hyperparameter tuning aimed at beating AO) -- see
+`RIS_Phase2_Prompt.md` and the Future Work section below.
 
 ## System model
 

@@ -23,11 +23,16 @@ M_TO_MXMY = {16: (4, 4), 64: (8, 8), 256: (16, 16)}
 COLORS_M = {16: "#2ca02c", 64: "#1f77b4", 256: "#9467bd"}
 
 
-def sweep_M(M):
-    Mx, My = M_TO_MXMY[M]
-    se = np.zeros(len(PTX_DBM))
-    ee = np.zeros(len(PTX_DBM))
-    for pi, ptx_dbm in enumerate(tqdm(PTX_DBM, desc=f"exp4 M={M}")):
+def sweep_M(M, ptx_dbm_grid=None, mx_my=None):
+    """ptx_dbm_grid: optional override of the Ptx sweep points (defaults to
+    module PTX_DBM); mx_my: optional (Mx, My) override for M values not in
+    M_TO_MXMY. Added in Phase 2 (reused by exp_objC_ee_optimal.py's finer
+    grid) -- default call signature/behaviour unchanged."""
+    ptx_dbm_grid = PTX_DBM if ptx_dbm_grid is None else ptx_dbm_grid
+    Mx, My = mx_my if mx_my is not None else M_TO_MXMY[M]
+    se = np.zeros(len(ptx_dbm_grid))
+    ee = np.zeros(len(ptx_dbm_grid))
+    for pi, ptx_dbm in enumerate(tqdm(ptx_dbm_grid, desc=f"exp4 M={M}")):
         se_acc, ee_acc = [], []
         for i in range(N_DRAWS):
             cfg = Config(K=1, Mx=Mx, My=My, Pmax_dBm=float(ptx_dbm))

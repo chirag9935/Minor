@@ -301,3 +301,57 @@ of concept, not a tuned baseline meant to compete with AO.
   fix K in the power model's `K*P_UE` term and is a straightforward
   extension, left out to keep the figure to the one sweep the assignment
   asks for.
+
+## Phase 2, Milestone 1: Objective B (min-power)
+
+- K=1's "RIS step = same phase alignment that maximises ||h_eff||" is
+  justified by an exact algebraic argument (max-rate for fixed P and
+  min-power for fixed SINR share the same optimal theta/W-direction for
+  K=1 -- see `objective_b.py`'s module docstring), not just an assumption;
+  cross-validated against a direct Riemannian maximisation of ||h_eff||^2
+  and found to agree within 0.3%.
+- K>1 ZF's closed-form power formula
+  (`P = gamma*sigma2*trace((H_eff H_eff^H)^-1)`) and precoder were both
+  verified three ways: achieved SINR equals gamma exactly, ||W||_F^2
+  equals the closed-form power exactly, and the closed-form power matches
+  a from-scratch direct computation of the same trace (the spec-required
+  test, `test_objective_b_zf_closed_form_matches_direct_computation`).
+- AF relay's required-power formula (inverting
+  `gamma = gamma1*gamma2/(gamma1+gamma2+1)` for gamma1, gamma2 fixed by
+  the relay's own Pmax) returns `+inf` (reported as outage, not an error
+  or a silently wrong number) when gamma2 <= the target -- the second hop
+  alone cannot reach that SINR at *any* first-hop power. Verified: a
+  forward rate computation at the inverted power reproduces the target
+  SINR exactly for every tested value.
+- Required power is confirmed non-increasing in M (sanity check, exp
+  `exp_objB_power_vs_M.py`): a 4x increase in M roughly quarters the
+  required power, consistent with the ~M^2 SNR-scaling law established in
+  Milestone 0 (power needed scales as ~1/M^2 for a fixed SINR target).
+- Outage probability vs target SINR (`exp_objB_outage.py`, K=1, M=64,
+  Pmax=30 dBm default) shows the expected ordering: AF relay has by far
+  the lowest outage (its second hop, at the relay's own full Pmax, does
+  most of the work), then AO-RIS, then no-RIS and random-phase RIS
+  (worst, since they must supply the whole link from a single BS-side
+  power budget with a weaker or unoptimised channel).
+
+## Phase 2, Milestone 2: Objective C (energy efficiency)
+
+- EE-optimal Ptx sits well below the 30 dBm power budget at every tested
+  M (20-22 dBm, vs the sum-rate-optimal 30 dBm) -- expected, since
+  `P_total` includes `Ptx/eta` (linear in Ptx) while rate grows only
+  logarithmically, so EE trades off rate against power cost and peaks at
+  a genuine interior point (confirmed visually: `exp_objC_ee_se_tradeoff.png`
+  shows a concave EE-vs-SE curve per M with a clear interior maximum, not
+  a boundary solution).
+- **Maximum achievable EE vs M has its own interior peak, at M=128**
+  (not M=256): more RIS elements raise the achievable rate but also cost
+  more static hardware power (`M*P_RIS` in the power model), so EE
+  eventually turns over once the marginal rate gain from more elements
+  stops paying for their own power draw. This is a genuine finding of the
+  power-model assumptions in docs/REFERENCES.md [5], not built in by
+  construction -- a different `P_RIS` would shift (or remove) the peak,
+  which is exactly what the P_RIS sensitivity sweep demonstrates.
+- Golden-section refinement around the coarse-grid argmax was used after
+  the 41-point grid search (the spec allows a plain grid search; the
+  refinement is a small, optional accuracy improvement, not a different
+  method -- see `_golden_section_refine` in `exp_objC_ee_optimal.py`).
