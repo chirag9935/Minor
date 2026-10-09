@@ -23,6 +23,7 @@ from objective_b import (
     min_power_single_user, required_power_single_user, zf_min_power_precoder,
     min_power_zf, is_outage,
 )
+from hardware import quantize_phase, rate_with_quantization
 
 
 # ---------------------------------------------------------------------------
@@ -379,6 +380,50 @@ def test_objective_b_required_power_nonincreasing_in_M():
 def test_objective_b_outage_flag():
     assert is_outage(P_required=10.0, Pmax=5.0) is True
     assert is_outage(P_required=3.0, Pmax=5.0) is False
+
+
+# ---------------------------------------------------------------------------
+# Phase 2, Milestone 4: hardware.py (discrete RIS phases)
+# ---------------------------------------------------------------------------
+
+def test_quantize_phase_levels_and_unit_modulus():
+    rng = np.random.default_rng(0)
+    theta = np.exp(1j * rng.uniform(0, 2 * np.pi, 64))
+    for bits in (1, 2, 3, 4):
+        tq = quantize_phase(theta, bits)
+        assert np.allclose(np.abs(tq), 1.0, atol=1e-9)
+        levels = 2 ** bits
+        grid = np.exp(1j * np.arange(levels) * (2 * np.pi / levels))
+        # every quantized value must exactly match one of the 2^bits grid points
+        dist_to_grid = np.abs(tq[:, None] - grid[None, :])
+        assert np.all(np.min(dist_to_grid, axis=1) < 1e-9)
+
+
+def test_quantized_rate_bounded_by_continuous_and_improves_with_bits():
+    """Required sanity checks (Phase 2 spec): quantised rate <= continuous
+    rate (on average), and approaches it as bits increase."""
+    cfg, H, G = _make_k1_instance(seed=5)
+    sigma2 = cfg.noise_power_w
+    theta_c, W_c, _ = run_ao(H, G, cfg.Pmax_w, sigma2, mode="mrt", max_iter=15)
+    rate_cont, _ = rate_with_quantization(G, H, W_c, theta_c, None, sigma2)
+
+    rates = []
+    for bits in (1, 2, 3, 4):
+        r, _ = rate_with_quantization(G, H, W_c, theta_c, bits, sigma2, refine=False)
+        assert r <= rate_cont + 1e-9
+        rates.append(r)
+    # monotonically non-decreasing as bits increase (more levels -> closer to continuous)
+    assert np.all(np.diff(rates) >= -1e-9)
+
+
+def test_quantization_aware_refine_never_hurts():
+    cfg, H, G = _make_k1_instance(seed=6)
+    theta_c, W_c, _ = run_ao(H, G, cfg.Pmax_w, cfg.noise_power_w, mode="mrt", max_iter=15)
+    sigma2 = cfg.noise_power_w
+    for bits in (1, 2):
+        r_plain, _ = rate_with_quantization(G, H, W_c, theta_c, bits, sigma2, refine=False)
+        r_refined, _ = rate_with_quantization(G, H, W_c, theta_c, bits, sigma2, refine=True)
+        assert r_refined >= r_plain - 1e-9
 
 
 if __name__ == "__main__":

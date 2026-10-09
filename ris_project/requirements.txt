@@ -6,3 +6,4 @@ stable-baselines3
 gymnasium
 tqdm
 pytest
+itur
