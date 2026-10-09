@@ -15,7 +15,47 @@ budget), Lmol (molecular absorption loss factor).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import lru_cache
+import warnings
 import numpy as np
+
+try:
+    import itur as _itur
+    _ITUR_AVAILABLE = True
+except ImportError:
+    _ITUR_AVAILABLE = False
+    warnings.warn(
+        "itur (ITU-Rpy) is not installed; Config.absorption_model='itu' will "
+        "fall back to the Phase 1 placeholder dB/km table instead. Install "
+        "with `pip install itur` for the real ITU-R P.676 model (Phase 2 "
+        "Milestone 3). See docs/ASSUMPTIONS.md."
+    )
+
+# One ITU-R P.676 call per distinct (fc, T, P, rho) combo -- these repeat
+# constantly across Monte Carlo draws at fixed sweep points, so caching
+# avoids redundant calls (each ~0.2 ms, cheap but non-zero over thousands
+# of channel draws).
+@lru_cache(maxsize=4096)
+def _itu_absorption_db_per_km(fc: float, temperature_c: float, pressure_hpa: float,
+                               water_vapour_density: float) -> float:
+    """Real ITU-R P.676 gaseous (oxygen + water vapour) specific attenuation,
+    dB/km, via itur.gaseous_attenuation_terrestrial_path (verified API: see
+    docs/ASSUMPTIONS.md). r=1 km -> the returned dB value IS dB/km, since
+    the terrestrial-path attenuation scales exactly linearly with path
+    length (confirmed numerically: r=2km gives exactly 2x the r=1km
+    attenuation). el=0 (horizontal path) -> use mode="exact" (the "approx"
+    mode in itur warns that it is only valid for elevation 5-90 degrees).
+    Falls back to the nearest Phase 1 placeholder value if itur is not
+    installed (see docs/ASSUMPTIONS.md)."""
+    if not _ITUR_AVAILABLE:
+        placeholders = {28e9: 0.1, 140e9: 2.0, 300e9: 8.0}
+        freqs = np.array(list(placeholders.keys()))
+        nearest = freqs[np.argmin(np.abs(freqs - fc))]
+        return placeholders[nearest]
+    att = _itur.gaseous_attenuation_terrestrial_path(
+        r=1.0, f=fc / 1e9, el=0, rho=water_vapour_density,
+        P=pressure_hpa, T=temperature_c + 273.15, mode="exact")
+    return float(att.value)
 
 
 @dataclass
@@ -84,9 +124,20 @@ class Config:
     bs_gain_dbi: float = 45.0
     ue_gain_dbi: float = 25.0
 
-    # ----- molecular absorption coefficients (approximate placeholders) -----
-    # k(f) in dB/km. A proper model would use ITU-R P.676 / HITRAN line
-    # data; these are illustrative placeholders only (see docs/REFERENCES.md, [8]).
+    # ----- molecular absorption (Phase 2 Milestone 3) -----
+    # Default model is now "itu": real ITU-R P.676 gaseous attenuation
+    # (oxygen + water vapour), via the itur (ITU-Rpy) package, verified
+    # against its own documented API (gaseous_attenuation_terrestrial_path)
+    # before use -- see docs/ASSUMPTIONS.md. "placeholder" keeps Phase 1's
+    # illustrative, hand-picked dB/km table (absorption_db_per_km below)
+    # reproducible for comparison; it is not deleted.
+    absorption_model: str = "itu"        # "itu" or "placeholder"
+    temperature_c: float = 15.0          # deg C, ITU-R P.676 default condition
+    pressure_hpa: float = 1013.0         # hPa, ITU-R P.676 default condition
+    water_vapour_density: float = 7.5    # g/m^3, ITU-R P.676 default condition
+
+    # k(f) in dB/km. Phase 1 placeholders, kept for the absorption_model=
+    # "placeholder" fallback/comparison path only (see docs/REFERENCES.md, [8]).
     absorption_db_per_km: dict = field(default_factory=lambda: {
         28e9: 0.1,
         140e9: 2.0,
@@ -135,8 +186,15 @@ class Config:
         return 10 ** ((noise_dbm - 30) / 10)
 
     def absorption_coeff(self, fc: float | None = None) -> float:
-        """k(fc) in dB/km, nearest tabulated frequency (see absorption_db_per_km)."""
+        """k(fc) in dB/km. Dispatches on self.absorption_model:
+        "itu" (default) -> real ITU-R P.676 gaseous attenuation via itur,
+        at this Config's temperature_c/pressure_hpa/water_vapour_density;
+        "placeholder" -> Phase 1's hand-picked dB/km table (nearest
+        tabulated frequency in absorption_db_per_km)."""
         fc = self.fc if fc is None else fc
+        if self.absorption_model == "itu":
+            return _itu_absorption_db_per_km(fc, self.temperature_c, self.pressure_hpa,
+                                              self.water_vapour_density)
         freqs = np.array(list(self.absorption_db_per_km.keys()))
         nearest = freqs[np.argmin(np.abs(freqs - fc))]
         return self.absorption_db_per_km[nearest]

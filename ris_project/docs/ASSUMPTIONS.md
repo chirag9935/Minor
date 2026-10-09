@@ -94,6 +94,55 @@ exp1/exp2 K=1 headline story substantially: AO-RIS now wins decisively at
 *every* M tested (64 through 1024), not just at very large M, which is a
 cleaner and more reassuring result than either fix alone would have given.
 
+## Phase 2, Milestone 3: realistic ITU-R P.676 molecular absorption
+
+- Replaced the Phase 1 placeholder dB/km table with the real ITU-R P.676
+  gaseous (oxygen + water vapour) attenuation model, via the `itur`
+  (ITU-Rpy) package. **API verified from its own docstring before use**
+  (`itur.gaseous_attenuation_terrestrial_path(r, f, el, rho, P, T, mode)`,
+  confirmed to scale exactly linearly with path length r, so calling it
+  with r=1 km returns the specific attenuation directly in dB/km) --
+  not guessed or invented. Used `mode="exact"` (line-by-line summation,
+  valid 1-1000 GHz) rather than `"approx"`, which itur itself warns is
+  only valid for elevation angles 5-90 degrees -- our terrestrial path is
+  horizontal (el=0).
+- Default conditions (now `Config` fields): `temperature_c=15`,
+  `pressure_hpa=1013`, `water_vapour_density=7.5` (g/m^3), exactly the
+  spec's stated defaults.
+- **New default**: `Config.absorption_model = "itu"`. The Phase 1
+  placeholder table is kept, unmodified, as `absorption_model="placeholder"`
+  for reproducibility (ground rule: never break Phase 1 reproducibility).
+- Sanity-checked against well-known atmospheric physics (and locked in by
+  `test_itu_absorption_model_matches_known_physics`): a strong oxygen
+  absorption line near 60 GHz, a window of lower attenuation 70-150 GHz,
+  water-vapour lines near 180 and 325 GHz that scale with humidity while
+  the 60 GHz oxygen line does not (confirmed <5% change across
+  rho=2->15 g/m^3) -- see `plots/exp_absorption_vs_frequency.png` and
+  `plots/exp_absorption_humidity_sweep.png`, both of which visually
+  reproduce the textbook ITU-R P.676 spectrum shape.
+- Measured values at the three key frequencies (default conditions):
+  28 GHz -> 0.10 dB/km, 140 GHz -> 0.92 dB/km, 300 GHz -> 5.25 dB/km.
+  These replace Phase 1's hand-picked placeholders (0.1, 2.0, 8.0
+  dB/km respectively) with physically grounded numbers -- all in the
+  same order of magnitude, but not identical, confirming the
+  placeholders were reasonable guesses, not wildly off.
+- **Effect on existing results**: negligible at the project's geometry
+  (tens of metres). The 300 GHz distance study
+  (`exp_absorption_300ghz_distance.png`) overlays the ITU and placeholder
+  models directly and they are visually indistinguishable; both give the
+  *same* AO-RIS/no-RIS and AO-RIS/AF-relay crossover point (2 m, the
+  shortest distance tested -- AO-RIS already wins at every tested
+  distance under both models). **Because of this negligible effect,
+  only exp6 (the experiment this milestone directly targets) was
+  re-run** with the new default; exp1/exp2/exp_objB/exp_objC were not
+  re-run for this change alone, since a sub-dB absorption difference at
+  these distances cannot plausibly change any of their qualitative
+  conclusions (verified by this same overlay comparison) -- re-running
+  them would cost significant compute for a change admitted, in advance,
+  to be undetectable in the result. If a future milestone moves the
+  scenario to much longer ranges (where Milestone 3's own frequency
+  sweep shows the models diverge more), this decision should be revisited.
+
 ## Geometry
 
 - BS at (0, 0, 10) m, RIS at (20, 10, 10) m (given in the master prompt) ->

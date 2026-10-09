@@ -128,6 +128,37 @@ def test_absorption_140ghz_weaker_than_28ghz_same_distance():
     assert l140 < l28
 
 
+def test_itu_absorption_model_matches_known_physics():
+    """Phase 2, Milestone 3: the default absorption_model="itu" (ITU-R
+    P.676 via itur) should reproduce the well-known oxygen/water-vapour
+    absorption spectrum shape: a strong oxygen line near 60 GHz (the
+    O2 band), attenuation lower in the 70-150 GHz window than at the
+    60 GHz peak, and increasing water-vapour absorption with humidity
+    at a water-vapour-sensitive frequency (300 GHz) but not at the
+    humidity-insensitive oxygen line (60 GHz)."""
+    cfg = Config()
+    k60 = cfg.absorption_coeff(60e9)
+    k100 = cfg.absorption_coeff(100e9)
+    assert k60 > k100  # 60 GHz O2 peak >> the window just above it
+
+    cfg_dry = Config(water_vapour_density=2.0)
+    cfg_humid = Config(water_vapour_density=15.0)
+    assert cfg_humid.absorption_coeff(300e9) > cfg_dry.absorption_coeff(300e9)
+    # oxygen line should barely move with humidity (within ~5%)
+    k60_dry = cfg_dry.absorption_coeff(60e9)
+    k60_humid = cfg_humid.absorption_coeff(60e9)
+    assert abs(k60_humid - k60_dry) / k60_dry < 0.05
+
+
+def test_placeholder_absorption_model_still_reproducible():
+    """Phase 1's placeholder table stays available and exact (Phase 2
+    Milestone 0 ground rule: keep Phase 1 results reproducible)."""
+    cfg = Config(absorption_model="placeholder")
+    assert cfg.absorption_coeff(28e9) == 0.1
+    assert cfg.absorption_coeff(140e9) == 2.0
+    assert cfg.absorption_coeff(300e9) == 8.0
+
+
 def _make_k1_instance(seed=0, M=64, Nt=8):
     cfg = Config(K=1, Mx=8, My=M // 8, Nt=Nt)
     rng = cfg.rng(seed)
