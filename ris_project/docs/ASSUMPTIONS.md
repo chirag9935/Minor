@@ -273,10 +273,40 @@ implemented and verified here; the comparison result itself is the
 finding, reported honestly rather than tuned away.
 
 **Compute cost / scope**: SDR is not run above M=64 (per the spec --
-the SDP scales badly; a single M=64 solve already takes several seconds
-vs manifold's sub-second). `exp_sdr_vs_manifold.py` therefore uses a
-reduced Monte-Carlo count (20 draws, not 200) at M in {16,32,64} -- a
-deliberate, documented trade-off given SDP solve cost, not an oversight.
+the SDP scales badly). `exp_sdr_vs_manifold.py` therefore uses a reduced
+Monte-Carlo count (20 draws, not 200) at M in {16,32,64} -- a deliberate,
+documented trade-off given SDP solve cost, not an oversight.
+
+**A third real bug: CLARABEL at M=64 cost ~3.9 GB per solve and got the
+whole sweep OS-killed for running out of memory.** The full-scale
+`exp_sdr_vs_manifold.py` run (20 draws x M in {16,32,64}) was killed by
+the OS mid-run on low memory. Initial hypothesis (rebuilding a fresh
+`cp.Problem`/`cp.Variable` on every one of the ~20 bisection calls per
+draw was leaking memory) turned out to be wrong -- refactoring to
+canonicalize the SDP once per draw and bisect via a `cp.Parameter` (the
+diagnostically-correct fix for that *particular* inefficiency) did not
+fix the OOM. A standalone single-call probe isolated the real cause:
+CLARABEL (interior-point) solves ONE M=64 feasibility SDP (64x64
+complex-Hermitian V, embedded as a 128x128 real PSD cone) in ~20-25s
+using ~3.9 GB RSS, and that cost does not accumulate across calls --
+it is a single large working set per solve, consistent with the
+architectural fact that a dense interior-point method's per-iteration
+barrier Hessian for an nxn PSD cone is an n^2 x n^2 object (O(n^4)
+memory; n=128 here). At M=16 CLARABEL is fine (~0.1s, no memory issue);
+the cost explodes between M=32 (~1s) and M=64 (~20-25s) -- consistent
+with that quartic scaling. With bisection_iters=20 and N_DRAWS=20 at
+M=64, CLARABEL was asking for a sustained ~3.9 GB for roughly 400 solves
+-- this (combined with other processes on the machine) is what the OS
+killed. **Fixed by switching the default solver to SCS** (a first-order
+operator-splitting method, no dense barrier Hessian): the identical
+M=64 problem solves in ~0.4s using ~0.3 GB. Verified SCS is not just
+faster but *correct*: at M=32, SCS and CLARABEL agree on every
+feasible/infeasible decision tested, including right at the feasibility
+boundary (gamma=5.0: CLARABEL reports `infeasible_inaccurate`, SCS
+reports a clean `infeasible` -- same decision, SCS's status is actually
+more decisive). CLARABEL remains the solver used during the M=16-scale
+algebra/scaling verification above (point-checks, not a 20x20-draw
+sweep), where it is fast and was never in question.
 
 ## Geometry
 

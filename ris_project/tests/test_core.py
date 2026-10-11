@@ -534,7 +534,7 @@ def test_sdr_feasible_point_passes_its_own_constraints():
     """A known-good V (built from a real theta) must be accepted as feasible
     at (a hair below) its own true min-SINR -- catches sign/direction errors
     in the constraint formulation that the algebra test alone would miss."""
-    from sdr import _feasible
+    from sdr import _feasible, _build_feasibility_problem
     cfg, H, G = _make_k4_instance(seed=1, M=16)
     rng = cfg.rng(1)
     ue_pos = get_ue_positions(cfg, rng)
@@ -545,7 +545,8 @@ def test_sdr_feasible_point_passes_its_own_constraints():
     true_sinr = actual_min_sinr(theta0, u, cfg.noise_power_w)
 
     scale = 1.0 / np.sqrt(cfg.noise_power_w)
-    feasible, _ = _feasible(true_sinr * 0.999, u * scale, 1.0, cfg.M, "CLARABEL")
+    prob, gamma_param, V_var = _build_feasibility_problem(u * scale, 1.0, cfg.M)
+    feasible, _ = _feasible(true_sinr * 0.999, prob, gamma_param, V_var, "CLARABEL")
     assert feasible
 
 
