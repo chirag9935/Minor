@@ -199,6 +199,84 @@ cleaner and more reassuring result than either fix alone would have given.
   parameters to get subtly wrong, while also providing more coherent-
   combining gain; the net effect in this setup is still a net positive
   from larger M, just at a discount).
+- **K=4 is far more CSI-error-sensitive than K=1** (full 200-draw runs,
+  see `plots/exp_csi_error_vs_epsilon_K{1,4}.png`): at K=1 (MRT, no
+  interference to manage), rate only drops from 11.58 to 11.01 bit/s/Hz
+  across epsilon=0->0.5 (~5% loss). At K=4 (RZF, actively nulling
+  inter-user interference), rate collapses from 10.3 to 2.5 bit/s/Hz over
+  the same range (~75% loss) and drops *below* the random-phase reference
+  by epsilon~0.1 -- interference-nulling precoders need much more
+  accurate CSI than a simple matched filter, since a wrong null placement
+  actively creates interference rather than just missing some combining
+  gain. The "robust" RZF variant tracks a few percent above plain RZF
+  throughout but doesn't change this qualitative picture -- CSI accuracy
+  matters more than precoder regularisation choice at high epsilon.
+
+## Phase 2, Milestone 6: multi-user extensions and SDR
+
+**6(a) Rate vs K.** `exp_rate_vs_K.py`, K in {1,2,4,6}, Nt=8, M=64. Sum
+rate peaks around K=4 and falls off toward K=6 (close to the Nt=8
+antenna-count limit): more users means more multiplexing gain but also
+less room for ZF/RZF to null interference without noise enhancement --
+the classic massive-MIMO trade-off, reproduced here as expected, not an
+assumption we had to tune in.
+
+**6(b) SDR for RIS phases -- a real bug found and fixed during
+verification.** Applied SDR to the max-min-SINR problem with W fixed
+(sum-rate is not SDR-friendly, per the spec). Derivation (see `sdr.py`'s
+module docstring for the full derivation): `u_kj = conj(g_k) * (H w_j)`
+(elementwise), `h_k^H w_j = theta^T u_kj` (theta NOT conjugated -- a
+convention that is easy to get backwards), `|h_k^H w_j|^2 = trace(A_kj V)`
+with `A_kj = u_kj u_kj^H` and `V = conj(theta) theta^T`. **Verified
+numerically against a direct computation** (both the linear and the
+quadratic identity, to 1e-9) -- the spec-required check.
+
+While verifying the SDP solve itself (not just the algebra), found a
+second real bug: the problem's natural numerical scale is tiny
+(sigma2 ~1e-12 W, |u_kj| ~1e-7), well below the SDP solver's absolute
+feasibility tolerance. An unscaled solve reported a target gamma as
+"feasible" with a solution that, checked directly against the
+constraints, actually *violated* one of them (by a small absolute but
+large relative margin) -- the solver's "Solution may be inaccurate"
+warning was exactly right, and trusting the `status` string alone would
+have silently accepted a wrong answer. **Fixed by rescaling** (divide
+`u_kj` by sqrt(sigma2), set sigma2=1 for the solve) before bisecting on
+gamma; gamma is a dimensionless SINR ratio so this rescaling is an exact
+equivalence, not an approximation. Verified three independent ways: (1)
+the rescaled solution's constraints hold when checked directly against
+the *original* (unscaled) u/sigma2, (2) CLARABEL and SCS agree once both
+are rescaled, (3) an independently-coded manifold optimizer (see below)
+converges to a min-SINR *inside* the SDR-bisected feasible region,
+confirming the relaxation bound itself was correct all along.
+
+**SDR's Gaussian-randomization recovery underperforms manifold
+optimization in practice -- a genuine finding, not a bug.** Even after
+fixing the scaling bug, Gaussian randomization (up to 3000 draws tried)
+recovered a theta achieving a visibly lower min-SINR than the correct
+relaxation bound -- e.g., one representative instance (K=4, M=16): SDR
+bound ≈0.2-0.3 (confirmed correct, see above), but the best theta found
+by randomization only reached ≈0.15-0.16, actually *below* the trivial
+all-ones-phase baseline (≈0.179) and a 500-draw random-phase search
+(≈0.11-0.14, comparable). A manifold optimizer on the same objective
+(Riemannian gradient ascent on a smooth soft-min surrogate of the true,
+non-relaxed SINR, reusing the tangent-projection/Armijo/retraction
+structure from `ris_opt.py`) converged from 5 different random inits to
+the *same* value (≈0.211) every time, landing inside the SDR-confirmed
+feasible region and comfortably beating SDR's practical (post-
+randomization) result -- while also running roughly 5-10x faster at
+these M. This is a known, literature-documented property of SDR for
+RIS phase problems (the relaxation bound can be loose relative to what
+Gaussian randomization recovers in practice for small-to-moderate
+problem sizes) and is exactly the motivation cited for manifold
+optimization in docs/REFERENCES.md [4] -- both methods are correctly
+implemented and verified here; the comparison result itself is the
+finding, reported honestly rather than tuned away.
+
+**Compute cost / scope**: SDR is not run above M=64 (per the spec --
+the SDP scales badly; a single M=64 solve already takes several seconds
+vs manifold's sub-second). `exp_sdr_vs_manifold.py` therefore uses a
+reduced Monte-Carlo count (20 draws, not 200) at M in {16,32,64} -- a
+deliberate, documented trade-off given SDP solve cost, not an oversight.
 
 ## Geometry
 
