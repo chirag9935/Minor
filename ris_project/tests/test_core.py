@@ -26,6 +26,7 @@ from objective_b import (
 from hardware import quantize_phase, rate_with_quantization
 from csi_error import add_csi_error, rzf_robust
 from sdr import build_u, actual_min_sinr, sdr_max_min_sinr, manifold_max_min_sinr
+from drl_env import RISPhaseEnv, RISJointEnv
 
 
 # ---------------------------------------------------------------------------
@@ -569,6 +570,90 @@ def test_manifold_matches_or_beats_sdr_on_max_min_sinr():
     theta_m, sinr_m, _ = manifold_max_min_sinr(G, H, W, sigma2, theta0, iters=100)
     _, sinr_sdr, _ = sdr_max_min_sinr(G, H, W, sigma2, n_randomizations=200, rng=cfg.rng(4))
     assert sinr_m >= sinr_sdr - 1e-6
+
+
+# ---------------------------------------------------------------------------
+# Milestone 7: DRL environments (drl_env.py)
+# ---------------------------------------------------------------------------
+
+def test_drl_phase_env_reward_matches_rate_function():
+    """step()'s reward (= rate / ao_rate) must match an INDEPENDENTLY
+    computed rate for the same theta/W via metrics.sum_rate -- catches a
+    mismatch between the env's internal W-reconstruction rule and the
+    rate it reports, which the spec explicitly asks to be tested."""
+    cfg = Config(K=1, Mx=4, My=4)  # M=16
+    env = RISPhaseEnv(cfg, seed=0)
+    obs, info = env.reset(seed=0)
+    ao_rate = info["ao_rate"]
+
+    action = np.asarray([0.3] * cfg.M)  # arbitrary fixed, non-zero action
+    _, reward, terminated, truncated, step_info = env.step(action)
+    assert terminated and not truncated
+
+    theta = np.exp(1j * action)
+    W = mrt(effective_channel(env.G, env.H, theta)[0], cfg.Pmax_w)
+    expected_rate = sum_rate(effective_channel(env.G, env.H, theta), W, env.sigma2)
+
+    assert np.isclose(step_info["raw_rate"], expected_rate, rtol=1e-9)
+    assert np.isclose(reward, expected_rate / ao_rate, rtol=1e-9)
+    assert np.isclose(step_info["ao_rate"], ao_rate)
+
+
+def test_drl_joint_env_reward_matches_rate_function():
+    """Same check for the joint (phases + beamformer) env, including the
+    ||W||_F^2 = Pmax projection."""
+    cfg = Config(K=2, Mx=4, My=4)
+    env = RISJointEnv(cfg, seed=0)
+    _, info = env.reset(seed=0)
+    ao_rate = info["ao_rate"]
+
+    action = env.action_space.sample()
+    _, reward, terminated, _, step_info = env.step(action)
+    assert terminated
+
+    action = np.asarray(action, dtype=np.float64)  # match step()'s internal precision
+    theta = np.exp(1j * action[: cfg.M] * np.pi)
+    half = cfg.Nt * cfg.K
+    w_raw = action[cfg.M:]
+    W = w_raw[:half].reshape(cfg.Nt, cfg.K) + 1j * w_raw[half:].reshape(cfg.Nt, cfg.K)
+    W = W * (np.sqrt(cfg.Pmax_w) / np.linalg.norm(W, "fro"))
+    expected_rate = sum_rate(effective_channel(env.G, env.H, theta), W, env.sigma2)
+
+    assert np.isclose(step_info["raw_rate"], expected_rate, rtol=1e-9)
+    assert np.isclose(reward, expected_rate / ao_rate, rtol=1e-9)
+    # the projected W must actually satisfy the power budget
+    assert np.isclose(np.linalg.norm(W, "fro") ** 2, cfg.Pmax_w, rtol=1e-9)
+
+
+def test_drl_env_seed_gives_reproducible_results():
+    """Two freshly constructed envs, same seed, same reset seed -> bit-
+    identical channel draws (observation, ao_rate) and identical rewards
+    for the same action -- the spec's explicit reproducibility test."""
+    cfg = Config(K=1, Mx=4, My=4)
+    env_a = RISPhaseEnv(cfg, seed=7)
+    env_b = RISPhaseEnv(cfg, seed=7)
+    obs_a, info_a = env_a.reset(seed=0)
+    obs_b, info_b = env_b.reset(seed=0)
+    assert np.allclose(obs_a, obs_b)
+    assert info_a["ao_rate"] == info_b["ao_rate"]
+
+    action = np.asarray([0.1] * cfg.M)
+    _, reward_a, *_ = env_a.step(action)
+    _, reward_b, *_ = env_b.step(action)
+    assert reward_a == reward_b
+
+
+def test_drl_env_action_and_observation_spaces_are_well_formed():
+    """Action space bounds match the spec ([-pi, pi] for phases); the
+    observation space dimensionality matches 2*K*M; a sampled action is
+    always accepted by step() without shape errors."""
+    cfg = Config(K=1, Mx=4, My=4)
+    env = RISPhaseEnv(cfg, seed=0)
+    env.reset(seed=0)
+    assert env.action_space.shape == (cfg.M,)
+    assert np.isclose(env.action_space.low[0], -np.pi) and np.isclose(env.action_space.high[0], np.pi)
+    assert env.observation_space.shape == (2 * cfg.K * cfg.M,)
+    env.step(env.action_space.sample())  # must not raise
 
 
 if __name__ == "__main__":
