@@ -7,3 +7,4 @@ gymnasium
 tqdm
 pytest
 itur
+cvxpy

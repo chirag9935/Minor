@@ -24,6 +24,8 @@ from objective_b import (
     min_power_zf, is_outage,
 )
 from hardware import quantize_phase, rate_with_quantization
+from csi_error import add_csi_error, rzf_robust
+from sdr import build_u, actual_min_sinr, sdr_max_min_sinr, manifold_max_min_sinr
 
 
 # ---------------------------------------------------------------------------
@@ -455,6 +457,117 @@ def test_quantization_aware_refine_never_hurts():
         r_plain, _ = rate_with_quantization(G, H, W_c, theta_c, bits, sigma2, refine=False)
         r_refined, _ = rate_with_quantization(G, H, W_c, theta_c, bits, sigma2, refine=True)
         assert r_refined >= r_plain - 1e-9
+
+
+# ---------------------------------------------------------------------------
+# Phase 2, Milestone 5: csi_error.py
+# ---------------------------------------------------------------------------
+
+def test_csi_error_variance_matches_epsilon():
+    """Required test (Phase 2 spec): CSI error statistics match epsilon."""
+    rng = np.random.default_rng(0)
+    H = (rng.standard_normal((64, 8)) + 1j * rng.standard_normal((64, 8)))
+    G = (rng.standard_normal((64, 4)) + 1j * rng.standard_normal((64, 4)))
+    for epsilon in (0.01, 0.1, 0.5):
+        errs_H = []
+        for trial in range(300):
+            Hhat, _ = add_csi_error(H, G, epsilon, np.random.default_rng(trial))
+            errs_H.append(Hhat - H)
+        errs_H = np.array(errs_H)
+        measured_var = np.var(errs_H)
+        expected_var = epsilon * np.mean(np.abs(H) ** 2)
+        assert abs(measured_var - expected_var) / expected_var < 0.1
+
+    Hhat0, Ghat0 = add_csi_error(H, G, 0.0, rng)
+    assert np.array_equal(Hhat0, H) and np.array_equal(Ghat0, G)
+
+
+def test_csi_error_seed_gives_reproducible_results():
+    rng1 = np.random.default_rng(7)
+    rng2 = np.random.default_rng(7)
+    H = np.ones((8, 4), dtype=complex)
+    G = np.ones((8, 2), dtype=complex)
+    Hhat1, Ghat1 = add_csi_error(H, G, 0.1, rng1)
+    Hhat2, Ghat2 = add_csi_error(H, G, 0.1, rng2)
+    assert np.array_equal(Hhat1, Hhat2) and np.array_equal(Ghat1, Ghat2)
+
+
+def test_rzf_robust_reduces_to_rzf_at_zero_epsilon():
+    cfg, H, G = _make_k4_instance(seed=8)
+    rng = cfg.rng(8)
+    ue_pos = get_ue_positions(cfg, rng)
+    H_eff = effective_channel(G, H, np.ones(cfg.M, dtype=complex))
+    W_plain = rzf(H_eff, cfg.Pmax_w, cfg.noise_power_w)
+    W_robust = rzf_robust(H_eff, cfg.Pmax_w, cfg.noise_power_w, epsilon=0.0)
+    assert np.allclose(W_plain, W_robust, atol=1e-9)
+
+
+# ---------------------------------------------------------------------------
+# Phase 2, Milestone 6(b): sdr.py
+# ---------------------------------------------------------------------------
+
+def test_sdr_u_kj_algebra_matches_direct_computation():
+    """Required test (Phase 2 spec): verify the u_kj/V SDR algebra numerically
+    against a direct computation of h_k^H w_j and |h_k^H w_j|^2."""
+    rng = np.random.default_rng(0)
+    M, Nt, K = 8, 4, 3
+    H = rng.standard_normal((M, Nt)) + 1j * rng.standard_normal((M, Nt))
+    G = rng.standard_normal((M, K)) + 1j * rng.standard_normal((M, K))
+    W = rng.standard_normal((Nt, K)) + 1j * rng.standard_normal((Nt, K))
+    theta = np.exp(1j * rng.uniform(0, 2 * np.pi, M))
+
+    H_eff = effective_channel(G, H, theta)
+    direct = H_eff @ W  # (K,K), entry [k,j] = h_k^H w_j
+
+    u = build_u(G, H, W)
+    via_u = np.array([[theta @ u[k, j] for j in range(K)] for k in range(K)])
+    assert np.allclose(direct, via_u, atol=1e-9)
+
+    V = np.outer(np.conj(theta), theta)
+    via_V = np.array([[np.real(np.trace(np.outer(u[k, j], np.conj(u[k, j])) @ V))
+                        for j in range(K)] for k in range(K)])
+    assert np.allclose(np.abs(direct) ** 2, via_V, atol=1e-9)
+    assert np.allclose(np.diag(V), 1.0)  # unit-modulus theta -> unit diagonal
+
+
+def test_sdr_feasible_point_passes_its_own_constraints():
+    """A known-good V (built from a real theta) must be accepted as feasible
+    at (a hair below) its own true min-SINR -- catches sign/direction errors
+    in the constraint formulation that the algebra test alone would miss."""
+    from sdr import _feasible
+    cfg, H, G = _make_k4_instance(seed=1, M=16)
+    rng = cfg.rng(1)
+    ue_pos = get_ue_positions(cfg, rng)
+    H_eff0 = effective_channel(G, H, np.ones(cfg.M, dtype=complex))
+    W = rzf(H_eff0, cfg.Pmax_w, cfg.noise_power_w)
+    u = build_u(G, H, W)
+    theta0 = np.ones(cfg.M, dtype=complex)
+    true_sinr = actual_min_sinr(theta0, u, cfg.noise_power_w)
+
+    scale = 1.0 / np.sqrt(cfg.noise_power_w)
+    feasible, _ = _feasible(true_sinr * 0.999, u * scale, 1.0, cfg.M, "CLARABEL")
+    assert feasible
+
+
+def test_manifold_matches_or_beats_sdr_on_max_min_sinr():
+    """Phase 2 spec: compare SDR against manifold optimization on the same
+    max-min objective. Manifold (direct, non-relaxed optimization) should
+    not do worse than SDR+randomization -- documented finding (see
+    docs/ASSUMPTIONS.md): SDR's relaxation bound is correct (independently
+    confirmed: the manifold result lands inside the SDR-bisected feasible
+    region) but Gaussian randomization recovers a visibly looser solution
+    in practice for this problem."""
+    cfg, H, G = _make_k4_instance(seed=2, M=16)
+    rng = cfg.rng(2)
+    ue_pos = get_ue_positions(cfg, rng)
+    H_eff0 = effective_channel(G, H, np.ones(cfg.M, dtype=complex))
+    W = rzf(H_eff0, cfg.Pmax_w, cfg.noise_power_w)
+    sigma2 = cfg.noise_power_w
+
+    theta0 = np.exp(1j * cfg.rng(3).uniform(0, 2 * np.pi, cfg.M))
+    theta_m, sinr_m, _ = manifold_max_min_sinr(G, H, W, sigma2, theta0, iters=100)
+    _, sinr_sdr, _ = sdr_max_min_sinr(G, H, W, sigma2, n_randomizations=200, rng=cfg.rng(4))
+    assert sinr_m >= sinr_sdr - 1e-6
 
 
 if __name__ == "__main__":
