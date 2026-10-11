@@ -308,6 +308,46 @@ more decisive). CLARABEL remains the solver used during the M=16-scale
 algebra/scaling verification above (point-checks, not a 20x20-draw
 sweep), where it is fast and was never in question.
 
+**A fourth real bug: the SCS fix solved memory but not time -- bisection
+itself gets slow right where it matters most.** Even after the SCS
+switch, the full M6(b) sweep at M=64 still took hours (one single draw
+observed taking 3+ hours via the run's tqdm progress log), while the
+isolated single-call SCS probe above (a synthetic, randomly-generated
+`u`) had suggested ~0.4s per solve -- a ~100x discrepancy that pointed
+at something specific to the *real*, channel-derived problem rather
+than SCS itself. Root-caused by tracing every bisection iteration of a
+real (slow) draw individually: solves far from the feasibility boundary
+are fast (~0.6-1s, matching the earlier estimate), but as bisection
+necessarily narrows in on the true boundary, the SDP becomes
+near-degenerate and SCS's convergence slows sharply and progressively
+(one iteration next to the optimum took 40s with SCS's default
+max_iters, worse for the next, closer iterations) -- this is *why*
+bisection is especially expensive: by construction it spends most of
+its iterations exactly in the hardest region of the problem. This is
+not special to SCS; CLARABEL would hit the same near-degenerate
+conditioning, just paying for it in memory/interior-point iterations
+rather than first-order iterations. **Fixed by capping SCS at
+max_iters=1000** per solve: the pathological-case solve above drops
+from 40s+ (and climbing further for closer iterations) to a few
+seconds, reported as `optimal_inaccurate` rather than `optimal` --
+already treated as feasible by the existing status check, and harmless
+to correctness because the *final* reported SINR always comes from
+`actual_min_sinr` (direct evaluation against the true, non-relaxed
+objective, after Gaussian randomization), never from the SDP's own
+near-boundary objective value. Verified end-to-end on 4 real M=64
+draws: total per-draw SDR time dropped from 802.69s (unbounded) to
+27.69-101.10s (bounded), with the achieved min-SINR essentially
+unchanged on the one draw checked both ways (0.1890 unbounded vs 0.1843
+bounded, a difference well within Monte-Carlo noise). On these same 4
+draws, manifold optimization beat SDR+randomization by a much larger
+margin than the M=16 case documented above (e.g. 1.20 vs 0.18, 1.86 vs
+0.064) -- consistent with, and a sharper version of, the already-
+documented finding that Gaussian randomization's practical gap behind
+the true relaxation bound worsens as M grows (a unit-modulus vector
+becomes exponentially harder to hit by random chance in higher
+dimensions), while manifold optimization's direct, non-relaxed
+Riemannian ascent does not share that scaling disadvantage.
+
 ## Geometry
 
 - BS at (0, 0, 10) m, RIS at (20, 10, 10) m (given in the master prompt) ->

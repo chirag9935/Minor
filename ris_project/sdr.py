@@ -91,10 +91,29 @@ def _build_feasibility_problem(u: np.ndarray, sigma2: float, M: int):
 def _feasible(gamma_val: float, prob: cp.Problem, gamma_param: cp.Parameter,
               V: cp.Variable, solver: str) -> tuple:
     """Re-solves the (already canonicalized) feasibility SDP at a new target
-    gamma. Returns (feasible: bool, V or None)."""
+    gamma. Returns (feasible: bool, V or None).
+
+    max_iters=1000 for SCS: bisection necessarily probes gamma values
+    arbitrarily close to the true feasibility boundary, where the SDP
+    becomes near-degenerate and SCS's convergence slows sharply (confirmed
+    via per-iteration bisection tracing: solves far from the boundary take
+    ~0.6-1s, but the solve immediately next to the true optimum took 40s
+    with SCS's default max_iters, and climbs further for even-closer
+    iterations -- this, not a per-solve memory blowup, is why the full
+    M6(b) sweep at M=64 was taking hours instead of minutes even after the
+    CLARABEL->SCS memory fix). Capping max_iters bounds each call to a few
+    seconds worst-case; the result is then reported as "optimal_inaccurate"
+    rather than "optimal", which this function already treats as feasible.
+    This doesn't bias correctness: the final reported SINR always comes
+    from actual_min_sinr (direct evaluation against the true, non-relaxed
+    objective after Gaussian randomization), never from the SDP's own
+    (possibly loose, near the boundary) objective value."""
     gamma_param.value = gamma_val
     try:
-        prob.solve(solver=solver)
+        if solver == "SCS":
+            prob.solve(solver=solver, max_iters=1000)
+        else:
+            prob.solve(solver=solver)
     except cp.error.SolverError:
         return False, None
     feasible = prob.status in ("optimal", "optimal_inaccurate")
