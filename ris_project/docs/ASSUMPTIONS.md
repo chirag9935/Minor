@@ -348,6 +348,44 @@ becomes exponentially harder to hit by random chance in higher
 dimensions), while manifold optimization's direct, non-relaxed
 Riemannian ascent does not share that scaling disadvantage.
 
+**Final full-scale result** (`exp_sdr_vs_manifold.py`, all fixes above
+applied, N_DRAWS=20, M in {16,32,64}):
+
+```
+   M   SDR SINR   Manifold SINR   Random SINR  SDR time[s]  Manifold time[s]
+  16     0.0863          0.1902        0.1196        3.422             0.781
+  32     0.0939          0.4833        0.1572       20.753             0.598
+  64     0.1127          1.0099        0.1715      135.279             0.626
+```
+
+Confirms the finding at full scale, not just on a handful of point-
+checked draws: manifold beats both SDR+randomization and random-phase
+at every M, with the margin widening sharply as M grows (manifold
+improves ~5.3x from M=16 to M=64, while SDR+randomization barely moves,
+0.086->0.113) -- exactly the "randomization gets relatively worse in
+higher dimensions" mechanism above. SDR's average per-draw time also
+confirms the near-boundary cost is real but now bounded rather than
+catastrophic (3.4s -> 20.8s -> 135.3s, roughly an order of magnitude per
+M-doubling, consistent with bisection spending more of its iterations
+near an increasingly delicate boundary as M grows) -- vs. manifold's
+flat ~0.6-0.8s regardless of M, a direct illustration of why manifold
+optimization, not SDR, is the practical choice at scale.
+
+**A fifth, non-algorithmic lesson: checkpoint anything that takes this
+long.** This sweep was killed by the OS for system-wide low memory
+*twice* after the above fixes, each time with 16-20 of 20 M=64 draws
+already done -- not from this script's own footprint (a flat ~0.3 GB
+throughout, confirmed via process monitoring) but from other
+processes on the machine (a single Chrome process alone was observed
+at 1.5 GB). `exp_sdr_vs_manifold.py` now checkpoints every single
+draw's result to disk immediately (`results/exp_sdr_vs_manifold_
+checkpoint_M{M}.npz`) and resumes from the first incomplete draw per M
+on re-run, since each draw's randomness is keyed only by its own index
+and is independent of every other draw. The run that finally completed
+end-to-end took ~53 minutes of wall-clock compute (M=16: ~16s, M=32:
+~7 min, M=64: ~45 min) -- a real cost worth protecting against being
+silently discarded by something entirely outside this script's control.
+
 ## Geometry
 
 - BS at (0, 0, 10) m, RIS at (20, 10, 10) m (given in the master prompt) ->

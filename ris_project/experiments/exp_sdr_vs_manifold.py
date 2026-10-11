@@ -12,8 +12,20 @@ but Gaussian randomization recovers a visibly looser solution in practice
 -- manifold optimization (operating on the true, non-relaxed objective)
 matches or beats SDR+randomization at every tested M, while also being
 much faster.
+
+Checkpointing: this run was twice killed by the OS for system-wide low
+memory with 16-20/20 M=64 draws already done (see docs/ASSUMPTIONS.md --
+the machine's other processes, not this script, drove memory pressure;
+this script's own footprint is a flat ~0.3 GB after the CLARABEL->SCS fix).
+Each draw's result is therefore checkpointed to disk immediately after it
+completes (results/exp_sdr_vs_manifold_checkpoint_M{M}.npz); re-running
+this script resumes from the first incomplete draw per M instead of
+restarting, since each draw's randomness is keyed only by its own index
+(cfg.rng(i)) and is independent of other draws.
+
 Run: python -m experiments.exp_sdr_vs_manifold
 """
+import os
 import time
 
 import numpy as np
@@ -24,10 +36,27 @@ from channel import get_ue_positions, sv_channel_H, sv_channel_g
 from beamforming import rzf
 from metrics import effective_channel
 from sdr import sdr_max_min_sinr, manifold_max_min_sinr, build_u, actual_min_sinr
-from experiments._common import new_fig, style_and_save, save_results
+from experiments._common import new_fig, style_and_save, save_results, RESULTS_DIR
 
 N_DRAWS = 20  # SDP solves are expensive; a smaller Monte-Carlo count is a deliberate, documented trade-off
 M_CONFIGS = [(16, (4, 4)), (32, (8, 4)), (64, (8, 8))]
+
+
+def _checkpoint_path(M):
+    return os.path.join(RESULTS_DIR, f"exp_sdr_vs_manifold_checkpoint_M{M}.npz")
+
+
+def _load_checkpoint(M):
+    path = _checkpoint_path(M)
+    if not os.path.exists(path):
+        return {"sdr": [], "manifold": [], "random": [], "t_sdr": [], "t_manifold": []}
+    d = np.load(path)
+    return {k: list(d[k]) for k in ("sdr", "manifold", "random", "t_sdr", "t_manifold")}
+
+
+def _save_checkpoint(M, acc):
+    np.savez(_checkpoint_path(M), sdr=acc["sdr"], manifold=acc["manifold"],
+             random=acc["random"], t_sdr=acc["t_sdr"], t_manifold=acc["t_manifold"])
 
 
 def sweep():
@@ -39,9 +68,12 @@ def sweep():
     time_manifold = np.zeros(len(M_CONFIGS))
 
     for mi, (M, (Mx, My)) in enumerate(M_CONFIGS):
-        acc_sdr, acc_manifold, acc_random = [], [], []
-        t_sdr, t_manifold = [], []
-        for i in tqdm(range(N_DRAWS), desc=f"exp_sdr_vs_manifold M={M}"):
+        acc = _load_checkpoint(M)
+        done = len(acc["sdr"])
+        if done >= N_DRAWS:
+            print(f"M={M}: resuming from checkpoint, all {N_DRAWS} draws already done.")
+        for i in tqdm(range(done, N_DRAWS), desc=f"exp_sdr_vs_manifold M={M}",
+                      initial=done, total=N_DRAWS):
             cfg = Config(K=4, Mx=Mx, My=My)
             rng = cfg.rng(i)
             ue_pos = get_ue_positions(cfg, rng)
@@ -56,27 +88,28 @@ def sweep():
 
             _, s_sdr, el_sdr = sdr_max_min_sinr(G, H, W, sigma2, n_randomizations=200,
                                                  rng=cfg.rng(i + 1000))
-            acc_sdr.append(s_sdr)
-            t_sdr.append(el_sdr)
 
             theta_init = np.exp(1j * cfg.rng(i + 2000).uniform(0, 2 * np.pi, cfg.M))
-            t0 = time.time()
             _, s_manifold, el_manifold = manifold_max_min_sinr(G, H, W, sigma2, theta_init, iters=100)
-            acc_manifold.append(s_manifold)
-            t_manifold.append(el_manifold)
 
             rng_r = cfg.rng(i + 3000)
             best_r = -1.0
             for _ in range(200):
                 tr = np.exp(1j * rng_r.uniform(0, 2 * np.pi, cfg.M))
                 best_r = max(best_r, actual_min_sinr(tr, u, sigma2))
-            acc_random.append(best_r)
 
-        sinr_sdr[mi] = np.mean(acc_sdr)
-        sinr_manifold[mi] = np.mean(acc_manifold)
-        sinr_random[mi] = np.mean(acc_random)
-        time_sdr[mi] = np.mean(t_sdr)
-        time_manifold[mi] = np.mean(t_manifold)
+            acc["sdr"].append(s_sdr)
+            acc["manifold"].append(s_manifold)
+            acc["random"].append(best_r)
+            acc["t_sdr"].append(el_sdr)
+            acc["t_manifold"].append(el_manifold)
+            _save_checkpoint(M, acc)
+
+        sinr_sdr[mi] = np.mean(acc["sdr"])
+        sinr_manifold[mi] = np.mean(acc["manifold"])
+        sinr_random[mi] = np.mean(acc["random"])
+        time_sdr[mi] = np.mean(acc["t_sdr"])
+        time_manifold[mi] = np.mean(acc["t_manifold"])
 
     return M_values, sinr_sdr, sinr_manifold, sinr_random, time_sdr, time_manifold
 
