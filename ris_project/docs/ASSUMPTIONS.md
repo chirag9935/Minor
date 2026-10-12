@@ -476,6 +476,89 @@ how DRL scales with M (Stage B) or with a learned joint beamformer at
 K>1 (Stage C) -- both remain open questions this stage was not designed
 to answer.
 
+## Phase 2, Milestone 7: DRL (Approach B), Stage B
+
+K=1, M in {32, 64} (`exp_drl_stageB.py`), same settings as Stage A, per
+the spec ("Stage B ... same settings"). Run only because Stage A
+succeeded.
+
+**A resume bug found while running this: a completed stage silently got
+retrained from zero.** `run_stage()`'s checkpoint is deleted on success
+(it's scratch, not a deliverable), so when a later M=64 attempt was
+killed by the machine's low-memory condition and the whole script was
+re-run, it had no way to tell "M=32 already finished" from "M=32 never
+started," and began retraining all 6 of M=32's runs from scratch --
+confirmed in the log, and caught before it could finish (the retrain was
+itself killed partway through, by the same recurring low-memory
+condition, before it could overwrite the good M=32 results on disk).
+Fixed by having `run_stage()` skip immediately if its results file
+already exists and no checkpoint is pending for it. This machine's
+tendency for unrelated background processes (observed: Chrome processes
+individually growing past 500-800 MB, fluctuating) to trigger OS-level
+low-memory kills of long-running jobs was a recurring theme across M6
+and M7 -- in this run specifically, the single PPO run that remained
+after the fix needed **7 consecutive kill-and-resume cycles** before
+finally completing (each kill lost nothing beyond that one in-progress
+run, confirming the checkpoint design held up under far more repeated
+interruption than any other experiment in this project saw).
+
+**Result** -- full cross-M picture (Stage A's M=16 row repeated for
+comparison):
+
+```
+   M      AO    Random      SAC (+/-std)      PPO (+/-std)   SAC/AO  PPO/AO  SAC/Rand PPO/Rand
+  16   7.7906    3.7380   5.3631 (0.0738)   5.6255 (0.0350)   68.8%   72.2%    143.5%   150.5%
+  32   9.7514    4.5597   4.6591 (0.0951)   6.2636 (0.1550)   47.8%   64.2%    102.2%   137.4%
+  64  11.7443    5.4928   5.6529 (0.0411)   6.8260 (0.1070)   48.1%   58.2%    102.9%   124.3%
+```
+
+**DRL's relative advantage over AO shrinks as M grows, for both
+algorithms** -- the honest answer Stage B was designed to get. PPO's
+share of the AO rate drops steadily (72.2% -> 64.2% -> 58.2%) as M
+doubles twice, though it still clears random phase by a healthy,
+if also shrinking, margin (150.5% -> 137.4% -> 124.3%) and its learning
+curve (`plots/exp_drl_stageB_M64_learning_curve.png`) is still rising at
+the time-budget cutoff, so the M=64 gap may not be its true floor.
+
+**SAC specifically collapses to barely-better-than-random at M=32 and
+M=64** (102.2%, 102.9% of random phase -- essentially no learning beyond
+the random baseline, visible directly in both learning-curve plots as an
+early plateau/dip rather than continued improvement), a much sharper
+degradation than PPO's. The mechanism is visible in the raw step counts:
+because SAC's budget is CPU-time-capped (not step-capped) and SAC's
+per-step cost rises with the environment's action/observation dimension
+(M), SAC completed far fewer effective gradient updates at larger M
+within the SAME 1200s CPU budget (M=16: 63.8k-78.0k steps; M=32: did not
+even log a consistent count above in this writeup's table but was
+visibly capped well under its M=16 step counts; M=64: ~31-35k steps,
+roughly half of M=16's), compounding an already-harder learning problem
+with proportionally less training. PPO, by contrast, is step-capped
+(TOTAL_TIMESTEPS=200,000) rather than time-capped at every M tested here
+except M=64 seed=0/1 (which hit the time cap at 194,561/200,704 steps,
+i.e. barely affected) -- so PPO's training budget degrades far more
+gracefully with M than SAC's does, which plausibly explains most of the
+SAC-vs-PPO gap widening at larger M, on top of whatever genuine
+algorithmic difference exists between them for this problem (see the
+Stage A write-up's note on off-policy vs on-policy fit for this
+stateless, one-step-episode formulation).
+
+**What this does and does not show**: it shows, honestly, that this
+particular time-boxed DRL recipe does not scale as gracefully as AO as M
+grows -- a real, if unflattering, finding, exactly the kind the spec's
+"fair, honest, not a guaranteed win" framing asks for. It does NOT show
+DRL is fundamentally incapable of scaling to larger M (a larger or
+differently-tuned time budget, a different SAC learning-rate/buffer
+schedule, or simply more wall-clock patience could plausibly change this
+picture -- none of that was explored here, consistent with the spec's
+time-boxing). Stage C (joint agent, K=2 or 4, M=16) was not attempted:
+given Stage B's own finding that scaling M already strains this training
+budget, and that Stage C adds both a higher-dimensional action space
+(the beamformer) AND a harder reward landscape (K>1 requires AO's
+iterative manifold optimisation as the per-episode baseline, not the
+K=1 closed form), it was judged very unlikely to produce a meaningful
+result within the same time-boxed budget, and was not run -- reported
+here as a scoping decision, not a result.
+
 ## Geometry
 
 - BS at (0, 0, 10) m, RIS at (20, 10, 10) m (given in the master prompt) ->
