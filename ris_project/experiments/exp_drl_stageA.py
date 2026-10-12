@@ -38,18 +38,20 @@ from experiments._common import new_fig, style_and_save, save_results, RESULTS_D
 # footprint, but worth protecting against regardless. Every completed
 # (algo, seed) run's results are checkpointed to disk immediately; re-
 # running this script resumes by skipping already-completed runs.
-_CHECKPOINT_PATH = os.path.join(RESULTS_DIR, "exp_drl_stageA_checkpoint.pkl")
+def _checkpoint_path(name: str) -> str:
+    return os.path.join(RESULTS_DIR, f"{name}_checkpoint.pkl")
 
 
-def _load_checkpoint() -> dict:
-    if os.path.exists(_CHECKPOINT_PATH):
-        with open(_CHECKPOINT_PATH, "rb") as f:
+def _load_checkpoint(name: str) -> dict:
+    path = _checkpoint_path(name)
+    if os.path.exists(path):
+        with open(path, "rb") as f:
             return pickle.load(f)
     return {}
 
 
-def _save_checkpoint(all_results: dict):
-    with open(_CHECKPOINT_PATH, "wb") as f:
+def _save_checkpoint(name: str, all_results: dict):
+    with open(_checkpoint_path(name), "wb") as f:
         pickle.dump(all_results, f)
 
 TOTAL_TIMESTEPS = 200_000
@@ -177,9 +179,11 @@ def train_one(algo_name: str, seed: int, cfg: Config):
     return record, steps_reached, elapsed_cpu, infer_time
 
 
-def main():
-    cfg = Config(K=1, Mx=4, My=4)  # M=16
-    print(f"exp_drl_stageA: K=1, M={cfg.M}. {len(ALGOS)} algos x {len(SEEDS)} seeds, "
+def run_stage(cfg: Config, name: str):
+    """Shared training/eval/report driver for a Stage A/B run: SAC+PPO x
+    len(SEEDS) seeds at the given cfg, checkpointed and named by `name`
+    (e.g. "exp_drl_stageA", "exp_drl_stageB_M32")."""
+    print(f"{name}: K={cfg.K}, M={cfg.M}. {len(ALGOS)} algos x {len(SEEDS)} seeds, "
           f"cap {TOTAL_TIMESTEPS} steps / {TIME_BUDGET_S/60:.0f} min per run.", flush=True)
 
     ao_rate, random_rate, ao_time = _ao_and_random_baselines(cfg)
@@ -187,7 +191,7 @@ def main():
           f"(run time {ao_time*1e3:.3f} ms/instance)")
     print(f"Random-phase rate (held-out mean): {random_rate:.4f} bit/s/Hz")
 
-    all_results = _load_checkpoint()
+    all_results = _load_checkpoint(name)
     if all_results:
         done = {(a, i) for a, runs in all_results.items() for i in range(len(runs))}
         print(f"Resuming from checkpoint: {len(done)} of {len(ALGOS)*len(SEEDS)} runs already done.", flush=True)
@@ -201,7 +205,7 @@ def main():
         for seed in SEEDS[len(algo_results):]:
             record, steps, elapsed, infer_time = train_one(algo_name, seed, cfg)
             algo_results.append({"record": record, "steps": steps, "elapsed": elapsed, "infer_time": infer_time})
-            _save_checkpoint(all_results)
+            _save_checkpoint(name, all_results)
 
     # ---- learning curves: mean +/- std across seeds, common x-grid ----
     fig, ax = new_fig()
@@ -236,10 +240,10 @@ def main():
 
     ax.axhline(ao_rate, color="#2ca02c", linestyle="--", label="AO (closed-form)")
     ax.axhline(random_rate, color="#ff7f0e", linestyle="--", label="Random phase")
-    style_and_save(fig, ax, "exp_drl_stageA_learning_curve", "Training steps", "Held-out mean rate [bit/s/Hz]",
-                   title=f"DRL learning curves vs AO/random (K=1, M={cfg.M})")
+    style_and_save(fig, ax, f"{name}_learning_curve", "Training steps", "Held-out mean rate [bit/s/Hz]",
+                   title=f"DRL learning curves vs AO/random (K={cfg.K}, M={cfg.M})")
 
-    save_results("exp_drl_stageA", **save_dict)
+    save_results(name, **save_dict)
 
     print(f"\n{'Algo':>6} {'Final rate':>12} {'+/- std':>10} {'Infer ms/dec':>14} {'Train time[s]':>15}")
     print(f"{'AO':>6} {ao_rate:12.4f} {'':>10} {ao_time*1e3:14.4f} {'(closed-form)':>15}")
@@ -247,10 +251,14 @@ def main():
     for algo_name, final_mean, final_std, infer_t, elapsed in final_table:
         print(f"{algo_name:>6} {final_mean:12.4f} {final_std:10.4f} {infer_t*1e3:14.4f} {elapsed:15.1f}")
 
-    if os.path.exists(_CHECKPOINT_PATH):
-        os.remove(_CHECKPOINT_PATH)
+    if os.path.exists(_checkpoint_path(name)):
+        os.remove(_checkpoint_path(name))
 
-    print("\nStage A done. See docs/ASSUMPTIONS.md for the honest write-up of what this does and doesn't show.")
+    print(f"\n{name} done. See docs/ASSUMPTIONS.md for the honest write-up of what this does and doesn't show.")
+
+
+def main():
+    run_stage(Config(K=1, Mx=4, My=4), "exp_drl_stageA")  # M=16
 
 
 if __name__ == "__main__":
