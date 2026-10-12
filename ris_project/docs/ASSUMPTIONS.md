@@ -386,6 +386,96 @@ end-to-end took ~53 minutes of wall-clock compute (M=16: ~16s, M=32:
 ~7 min, M=64: ~45 min) -- a real cost worth protecting against being
 silently discarded by something entirely outside this script's control.
 
+## Phase 2, Milestone 7: DRL (Approach B), Stage A
+
+**Environment design** (`drl_env.py`): per the spec's own framing (citing
+Huang, Mo & Yuen, JSAC 2020), each episode draws one fresh channel
+realisation and is exactly one step long -- this is NOT a simplification
+we introduced; the spec's episode definition ("each episode draws a new
+channel realisation") only makes sense this way for a problem with no
+state carrying across time. `RISPhaseEnv` (Stages A/B) supersedes the
+Phase 1 proof-of-concept `exp7_drl_demo.py` (kept, not modified) for M7's
+purposes: that demo fixed its reference beamformer from a RANDOM phase
+independent of the action, so its reward didn't track the agent's own
+phase choice; here the beamformer is recomputed from the CURRENT action
+every step (mirroring AO's own "fix theta, update W" half-step) and the
+reward is the resulting rate normalised by the AO rate for the SAME
+channel instance, as the spec requires.
+
+**A real bug found before any training even started: wall-clock time-
+boxing is not safe on a machine that can sleep.** The first full Stage A
+attempt used `time.time()` to enforce the spec's "cap at about 20 minutes
+per run." The machine went idle for an extended stretch overnight mid-run
+(confirmed: SAC seed=0 completed a reasonable 16,059 steps in 1775.8s,
+but seed=1 managed only 261 steps over 12,185.6s and seed=2 only 1,010
+steps over 13,526.6s -- wall-clock time that had mostly elapsed while the
+process was suspended, not computing). Comparing a seed that got ~60x
+more real training than its siblings would have made any seed-to-seed
+comparison meaningless. **Fixed by switching to `time.process_time()`**
+(this process's own CPU time, immune to both sleep and -- to first order
+-- contention from unrelated processes) for the training time budget.
+Verified the fix directly: the corrected run hit exactly 1200.0s CPU on
+every one of the 3 SAC runs regardless of wall-clock (one of the 3 PPO
+runs, seed=1, again straddled a sleep event -- 426.8s CPU vs 2384.4s
+wall-clock -- and still completed its full step budget correctly,
+confirming the fix is robust to recurring sleep, not just a one-off).
+
+**Result** (K=1, M=16, SAC and PPO via stable-baselines3, 3 seeds each,
+net_arch=[256,256], eval every 5000 steps on a fixed 500-channel held-out
+set):
+
+```
+  Algo   Final rate   +/- std   Infer ms/dec   Train time[s]
+    AO       7.7906                   0.8846   (closed-form)
+Random       3.7380
+   SAC       5.3631    0.0738         0.2814          1200.0
+   PPO       5.6255    0.0350         0.2214           403.8
+```
+
+Both agents clearly learn: both rise from the random-phase baseline
+(3.74 bit/s/Hz) early in training and keep improving, reaching 5.36
+(SAC) and 5.63 (PPO) bit/s/Hz -- a genuine ~44-50% improvement over
+random phase -- while falling short of the AO closed-form oracle (7.79,
+a ~28-31% gap). Neither learning curve has fully plateaued by its budget
+cutoff (see `plots/exp_drl_stageA_learning_curve.png`), so more training
+budget would likely narrow the gap further, though by how much is not
+established here. Seed-to-seed variance is small (std 0.07/0.03 vs a
+~2 bit/s/Hz spread between random and AO), i.e. this is a consistent
+effect across seeds, not one lucky run.
+
+PPO reached a slightly *better* final rate than SAC while using roughly
+3x less CPU time (403.8s vs SAC's full 1200.0s budget -- PPO finished its
+entire 200k-step allowance well within the time cap, SAC did not: SAC
+only reached 63,821-77,962 steps in the same CPU budget, since each SAC
+step costs far more compute than each PPO step, mostly from its replay-
+buffer gradient updates). This runs somewhat against the common intuition
+that off-policy methods like SAC are more sample-efficient than on-policy
+PPO in continuous control -- plausibly because this is a stateless,
+one-step-per-episode (contextual-bandit-style) problem rather than a
+long-horizon sequential-decision MDP, which is exactly the regime where
+off-policy replay's main advantage (reusing past transitions for
+multi-step credit assignment) does not apply; PPO's simpler on-policy
+updates may just suit this problem's structure better. This is reported
+as an observation, not a general claim about SAC vs PPO.
+
+DRL inference (0.22-0.28 ms/decision) is faster than AO's own closed-form
+run time (0.88 ms/instance) at this M=16, K=1 scale -- a real, measured
+result, though it should be read cautiously: AO's K=1 closed-form step is
+already about as cheap as a single iterative algorithm step can be: this
+comparison is far more likely to favour DRL as M grows or K>1 requires
+AO's iterative manifold optimisation (not yet measured here; Stage B/the
+hybrid idea would be the place to check that trend).
+
+**What this Stage A result does and does not show** (per the spec's own
+"fair, honest, not a guaranteed win" framing): it shows DRL CAN learn a
+non-trivial RIS phase policy from scratch, purely from reward signal, in
+a time-boxed budget -- a real, positive, reproducible result. It does NOT
+show DRL matches or beats AO at this scale, nor does it establish whether
+further training would close the gap, nor does it say anything yet about
+how DRL scales with M (Stage B) or with a learned joint beamformer at
+K>1 (Stage C) -- both remain open questions this stage was not designed
+to answer.
+
 ## Geometry
 
 - BS at (0, 0, 10) m, RIS at (20, 10, 10) m (given in the master prompt) ->
