@@ -182,7 +182,23 @@ def train_one(algo_name: str, seed: int, cfg: Config):
 def run_stage(cfg: Config, name: str):
     """Shared training/eval/report driver for a Stage A/B run: SAC+PPO x
     len(SEEDS) seeds at the given cfg, checkpointed and named by `name`
-    (e.g. "exp_drl_stageA", "exp_drl_stageB_M32")."""
+    (e.g. "exp_drl_stageA", "exp_drl_stageB_M32").
+
+    Skips entirely if name's final results .npz already exists: the
+    checkpoint is deleted on success (it's scratch, not a deliverable),
+    which means a later re-run of a multi-stage caller (e.g.
+    exp_drl_stageB.py re-invoking run_stage for an already-finished M)
+    would otherwise have no way to tell "already done" from "never
+    started," and would silently retrain everything from scratch --
+    confirmed to actually happen (an M=32 run that had already completed
+    successfully got ~an hour of its results discarded and retrained from
+    zero by a resume after a later stage was killed) before this check
+    was added."""
+    results_path = os.path.join(RESULTS_DIR, f"{name}.npz")
+    if os.path.exists(results_path) and not os.path.exists(_checkpoint_path(name)):
+        print(f"{name}: results already exist at {results_path} and no checkpoint is pending -- skipping.", flush=True)
+        return
+
     print(f"{name}: K={cfg.K}, M={cfg.M}. {len(ALGOS)} algos x {len(SEEDS)} seeds, "
           f"cap {TOTAL_TIMESTEPS} steps / {TIME_BUDGET_S/60:.0f} min per run.", flush=True)
 
