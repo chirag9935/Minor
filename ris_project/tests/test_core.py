@@ -16,7 +16,7 @@ from channel import (
 )
 from beamforming import mrt, zf, rzf
 from ris_opt import phase_update_single_user, phase_update_manifold
-from metrics import effective_channel, sum_rate
+from metrics import effective_channel, sum_rate, energy_efficiency, total_power_w
 from ao import run_ao
 from benchmarks import no_ris_rate
 from objective_b import (
@@ -345,6 +345,29 @@ def test_rate_increases_with_M():
             rs.append(hist[-1])
         rates.append(np.mean(rs))
     assert rates[0] < rates[1] < rates[2]
+
+
+def test_energy_efficiency_formula_matches_direct_computation():
+    """Required test (Phase 2 spec, Section 10): EE formula. Verifies
+    EE = BW*rate/P_total and P_total = Ptx/eta + P_BS_static + M*P_RIS +
+    K*P_UE (metrics.total_power_w/energy_efficiency) against a manual,
+    from-scratch computation with known inputs -- catches a mismatch
+    between the two halves of the power model (e.g. a term dropped or
+    double-counted) that a purely qualitative EE-vs-Ptx plot would not."""
+    cfg = Config(K=4, Mx=8, My=8, pa_efficiency=0.4, p_bs_static_w=1.0,
+                 p_ris_elem_w=5e-3, p_ue_w=0.1, BW=100e6)
+    Ptx_w = 10 ** ((20.0 - 30) / 10)  # 20 dBm -> 0.1 W
+    rate = 7.3  # bit/s/Hz, an arbitrary fixed value -- only the formula is under test
+
+    expected_P_total = Ptx_w / 0.4 + 1.0 + cfg.M * 5e-3 + cfg.K * 0.1
+    expected_EE = cfg.BW * rate / expected_P_total
+
+    P_total = total_power_w(cfg, Ptx_w)
+    EE, SE = energy_efficiency(cfg, rate, Ptx_w)
+
+    assert np.isclose(P_total, expected_P_total, rtol=1e-12)
+    assert np.isclose(EE, expected_EE, rtol=1e-12)
+    assert SE == rate  # SE is just the rate, passed through
 
 
 # ---------------------------------------------------------------------------
