@@ -503,6 +503,36 @@ def test_rzf_robust_reduces_to_rzf_at_zero_epsilon():
     assert np.allclose(W_plain, W_robust, atol=1e-9)
 
 
+def test_csi_error_degrades_rate_on_average():
+    """Required sanity check (Phase 2 spec): rate with CSI error <= rate
+    with perfect CSI, on average. Mirrors exp_csi_error.py's own K=1
+    sweep (AO run on the noisy ESTIMATE, evaluated against the TRUE
+    channel) at a reduced draw count for test speed; epsilon=0.2 is
+    large enough that the degradation is well clear of Monte-Carlo noise
+    at even this reduced N (confirmed at full scale in
+    docs/ASSUMPTIONS.md: eps=0 -> eps=0.5 drops K=1 rate 11.58 -> 11.01,
+    K=4 (RZF) far more sharply, 10.29 -> 2.49)."""
+    cfg = Config(K=1)
+    n_draws = 40
+    rates = {0.0: [], 0.2: []}
+    for eps in rates:
+        for i in range(n_draws):
+            rng = cfg.rng(i)
+            ue_pos = get_ue_positions(cfg, rng)
+            H = sv_channel_H(cfg, rng)
+            G = sv_channel_g(cfg, rng, ue_pos)
+            P, sigma2 = cfg.Pmax_w, cfg.noise_power_w
+
+            Hhat, Ghat = add_csi_error(H, G, eps, cfg.rng(i + 30000))
+            theta, W, _ = run_ao(Hhat, Ghat, P, sigma2, mode="mrt", max_iter=15)
+            true_rate = sum_rate(effective_channel(G, H, theta), W, sigma2)
+            rates[eps].append(true_rate)
+
+    mean_perfect = np.mean(rates[0.0])
+    mean_noisy = np.mean(rates[0.2])
+    assert mean_noisy <= mean_perfect
+
+
 # ---------------------------------------------------------------------------
 # Phase 2, Milestone 6(b): sdr.py
 # ---------------------------------------------------------------------------

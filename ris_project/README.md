@@ -102,7 +102,7 @@ cd ris_project
 python -m venv .venv && .venv/Scripts/activate   # or source .venv/bin/activate on Linux/Mac
 pip install -r requirements.txt
 
-pytest -q                # all 37 tests
+pytest -q                # all 38 tests
 
 ./run_all.sh              # reproduces every figure/result from a clean
                            # checkout -- takes HOURS (the DRL and SDR
