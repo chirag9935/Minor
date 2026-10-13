@@ -11,11 +11,16 @@ presented at the mid-evaluation (tag `phase1-midsem`). **Phase 2**
 (`RIS_Phase2_Prompt.md`) audited and fixed Phase 1 issues and completed
 every remaining assignment milestone (Objective B, Objective C, realistic
 absorption, hardware/CSI impairments, multi-K, SDR, a time-boxed DRL
-study) -- **Milestones M0-M7 are done**; only Milestone 8 (the written
-paper draft, `paper/`) remains, tracked separately and not yet started.
-See `docs/ASSUMPTIONS.md` for the full, detailed writeup of every
-milestone (including bugs found and fixed along the way) and
-`results/summary.csv` for the headline numbers.
+study) -- **Milestones M0-M7 are done.** Milestone 8 (`paper/` draft,
+`docs/FINAL_PRESENTATION_OUTLINE.md`, `docs/VIVA_QA.md`) is also written;
+the LaTeX draft has been checked structurally (balanced braces/
+environments, every citation resolves, every figure reference matches a
+copied file) but **not compiled to PDF**, since no LaTeX distribution is
+installed on the development machine -- the spec explicitly allows this
+("write the .tex files even if LaTeX is not installed; compile to PDF
+only if `pdflatex` is available"). See `docs/ASSUMPTIONS.md` for the
+full, detailed writeup of every milestone (including bugs found and
+fixed along the way) and `results/summary.csv` for the headline numbers.
 
 ## Assignment-step -> file mapping
 
@@ -26,7 +31,7 @@ milestone (including bugs found and fixed along the way) and
 | 3 | Algorithm design | `ao.py`, `ris_opt.py`, `beamforming.py`, `objective_b.py`, `sdr.py`, `drl_env.py` | Done: AO (MRT/ZF/RZF + closed-form/manifold RIS phases) for Objectives A/B; SDR relaxation for the max-min-SINR problem (`sdr.py`, Milestone 6b); a time-boxed DRL study, SAC/PPO (Milestone 7, Stages A/B -- Stage C, the joint K>1 agent, scoped out, see `docs/ASSUMPTIONS.md`) |
 | 4 | Implementation & simulation | all of the above + `benchmarks.py`, `hardware.py`, `csi_error.py` | Done, including discrete phase shifts and imperfect-CSI impairment models |
 | 5 | Result analysis & plots | `experiments/` (22 scripts), `results/summary.csv` | Done for every milestone M0-M7; reproduce everything via `./run_all.sh` (or `--fast` for a quick smoke test) |
-| 6 | Documentation & paper writing | this README, `docs/` | Results + assumptions fully documented for M0-M7; `paper/` LaTeX draft, `docs/FINAL_PRESENTATION_OUTLINE.md`, `docs/VIVA_QA.md` are Milestone 8, not yet started |
+| 6 | Documentation & paper writing | this README, `docs/`, `paper/` | Done: results + assumptions documented for M0-M7; `paper/main.tex` (IEEEtran draft, structurally checked, not PDF-compiled -- no LaTeX installed), `docs/FINAL_PRESENTATION_OUTLINE.md` (15 slides), `docs/VIVA_QA.md` (30 Q&A) all written (Milestone 8) |
 
 ## Scope
 
@@ -48,8 +53,8 @@ DRL study with SAC/PPO across M=16/32/64 (Milestone 7, Stages A/B). See
 every bug found and fixed along the way, and `RIS_Phase2_Prompt.md` for
 the original plan.
 
-**Still out of scope**: Milestone 8 (the written paper draft, slide
-outline, viva Q&A -- not started); Milestone 7's Stage C (joint K>1 DRL
+**Still out of scope**: compiling `paper/main.tex` to PDF (no LaTeX
+distribution installed -- the spec explicitly allows this); Milestone 7's Stage C (joint K>1 DRL
 agent -- scoped out after Stage B's own finding that DRL already strains
 to scale with M under the time-boxed training budget, see
 `docs/ASSUMPTIONS.md`); DRL hyperparameter tuning aimed at closing the
@@ -288,13 +293,17 @@ index. Headline numbers are in `results/summary.csv`.)*
 
 ## Future work
 
-A full written paper draft, slide outline, and viva Q&A (Milestone 8 --
-not yet started); the DRL joint multi-user agent (Stage C, K>1); DRL
-hyperparameter tuning or a longer training budget aimed at closing the
-gap to AO; channel estimation modelled from a specific pilot/estimator
-algorithm rather than an additive-error abstraction; a measurement-based
-or HITRAN-cross-validated molecular absorption model alongside the
-current ITU-R P.676 one.
+Compiling `paper/main.tex` to PDF once a LaTeX distribution is
+available (content is written and structurally checked, see Milestone
+8); the DRL joint multi-user agent (Stage C, K>1); DRL hyperparameter
+tuning or a longer training budget aimed at closing the gap to AO;
+channel estimation modelled from a specific pilot/estimator algorithm
+rather than an additive-error abstraction; a measurement-based or
+HITRAN-cross-validated molecular absorption model alongside the current
+ITU-R P.676 one; the DRL-initialised-AO hybrid suggested as an optional
+stretch goal in the Phase 2 spec (use the trained actor's output as
+AO's initial theta and measure the iteration savings vs. a random
+start).
 
 ## References
 

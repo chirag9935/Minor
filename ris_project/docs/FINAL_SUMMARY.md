@@ -1,10 +1,16 @@
 # Phase 2 final summary
 
-Per `RIS_Phase2_Prompt.md` section 11, item 5. Written at the point where
-Milestones 0-7 are complete and committed, Section 10 (tests/quality
-gates, `run_all.sh`) and the rest of Section 11 (summary.csv refresh,
-README/REFERENCES/EXPLAIN updates) are done, and Milestone 8 (paper
-draft, presentation outline, viva Q&A) has not yet been started.
+Per `RIS_Phase2_Prompt.md` section 11, item 5. Updated at the point
+where Milestones 0-8 are all complete and committed: Section 10
+(tests/quality gates, `run_all.sh`), the rest of Section 11
+(summary.csv refresh, README/REFERENCES/EXPLAIN updates), and Milestone
+8 (`paper/main.tex`, `docs/FINAL_PRESENTATION_OUTLINE.md`,
+`docs/VIVA_QA.md`) are all done. The one open item is compiling
+`paper/main.tex` to PDF, which the spec explicitly allows deferring when
+no LaTeX distribution is installed (the case here) -- the source has
+been checked structurally instead (balanced braces/environments, every
+citation resolves against `refs.bib`, every figure reference matches a
+file actually copied by `paper/copy_figures.py`).
 
 ## What is done
 
@@ -31,17 +37,28 @@ draft, presentation outline, viva Q&A) has not yet been started.
 - **Milestone 7**: a time-boxed DRL study (SAC, PPO; 3 seeds each) for
   RIS phase control, Stages A (K=1, M=16) and B (K=1, M=32/64). Stage C
   (joint K>1 agent) was scoped out, see below.
-- **Section 10/11 housekeeping** (this pass): `run_all.sh` (full and
-  `--fast` smoke-test modes), a refreshed `results/summary.csv` covering
-  every milestone, updated `README.md`/`docs/REFERENCES.md`/
-  `docs/EXPLAIN.md`, and this document. A full end-to-end `--fast` smoke
-  test of all 22 experiment scripts plus the test suite passed cleanly
-  (two real bugs were found and fixed getting it to that state -- see
-  "What failed" below).
+- **Section 10/11 housekeeping**: `run_all.sh` (full and `--fast`
+  smoke-test modes), a refreshed `results/summary.csv` covering every
+  milestone, updated `README.md`/`docs/REFERENCES.md`/`docs/EXPLAIN.md`,
+  this document, and the `phase2-final` git tag. A full end-to-end
+  `--fast` smoke test of all 22 experiment scripts plus the test suite
+  passed cleanly (two real bugs were found and fixed getting it to that
+  state -- see "What failed" below). Two further test-coverage gaps
+  (a missing CSI-error sanity-check test and a missing EE-formula test,
+  both explicitly named in the spec's Section 10) were found and closed
+  after the initial pass, bringing the suite to 39 tests.
+- **Milestone 8**: `paper/main.tex` (IEEEtran draft covering System
+  Model, Objectives A/B/C, the AO algorithm with a numbered algorithm
+  box and convergence argument, the SDR derivation, the DRL design, a
+  full parameter table, and a Results section with every included
+  figure discussed), `paper/refs.bib` (14 verified references -- the
+  original 9 plus 5 newly verified: SAC, PPO, the SDR survey paper,
+  Stable-Baselines3, and ITU-R P.676 itself), `paper/copy_figures.py`,
+  `docs/FINAL_PRESENTATION_OUTLINE.md` (15 slides + 4 backup slides),
+  and `docs/VIVA_QA.md` (30 Q&A).
 
-**Not done**: Milestone 8 (paper draft, `docs/FINAL_PRESENTATION_OUTLINE.md`,
-`docs/VIVA_QA.md`) and the `phase2-final` git tag (to be applied once this
-summary is reviewed).
+**Not done**: compiling `paper/main.tex` to PDF (no LaTeX distribution
+installed; the spec explicitly allows deferring this).
 
 ## Ten headline numbers
 
@@ -91,8 +108,17 @@ Full detail and every other computed metric: `results/summary.csv`.
   6(a)'s sum rate "peaks around K=4" -- checked directly against the
   saved data and found to be wrong (sum rate decreases monotonically
   with K); corrected with the right underlying mechanism.
-- **Milestone 8** (paper, presentation outline, viva Q&A) has not been
-  started.
+- **`paper/main.tex` has not been compiled to PDF**: no LaTeX
+  distribution is installed on the development machine. The spec
+  explicitly allows this ("write the .tex files even if LaTeX is not
+  installed; compile to PDF only if `pdflatex` is available"); the
+  source was instead checked structurally (balanced braces and
+  `\begin`/`\end` environments, every `\cite` key resolves in
+  `refs.bib` with none left unused, every `\includegraphics` path
+  matches a figure `copy_figures.py` actually copies) but has not been
+  run through an actual LaTeX engine, so page layout, float placement,
+  and any LaTeX-syntax errors outside what static checking can catch
+  remain unverified.
 
 ## Three weakest points a reviewer would attack
 
