@@ -15,9 +15,9 @@ from metrics import effective_channel
 from objective_b import (
     min_power_single_user, required_power_single_user, af_relay_required_power, is_outage,
 )
-from experiments._common import new_fig, style_and_save, save_results, COLORS, MARKERS
+from experiments._common import new_fig, style_and_save, save_results, COLORS, MARKERS, mc_draws
 
-N_DRAWS = 200
+N_DRAWS = mc_draws(200)
 GAMMA_DB = np.arange(0, 41, 4)
 
 

@@ -25,7 +25,7 @@ from channel import get_ue_positions, sv_channel_H, sv_channel_g
 from ao import run_ao
 from metrics import energy_efficiency
 from experiments import exp4_ee_vs_se as exp4
-from experiments._common import new_fig, style_and_save, save_results, COLORS
+from experiments._common import new_fig, style_and_save, save_results, COLORS, mc_draws
 
 PTX_DBM_FINE = np.linspace(-10, 30, 41)
 M_VALUES = [16, 32, 64, 128, 256]
@@ -59,7 +59,7 @@ def _golden_section_refine(se_fn, lo, hi, tol=0.05, max_iter=25):
     return best_ptx, ee, se
 
 
-def _ee_at_ptx(M, Mx, My, ptx_dbm, n_draws=200):
+def _ee_at_ptx(M, Mx, My, ptx_dbm, n_draws=mc_draws(200)):
     """Single-point EE/SE at a given Ptx (used by the golden-section refine)."""
     ee_acc, se_acc = [], []
     for i in range(n_draws):
@@ -142,7 +142,7 @@ def sensitivity():
     ee_vs_pris = np.zeros(len(p_ris_mw_values))
     for i, p_ris_mw in enumerate(p_ris_mw_values):
         ee_acc = []
-        for di in range(200):
+        for di in range(mc_draws(200)):
             cfg = Config(K=1, Mx=Mx, My=My, Pmax_dBm=20.0, p_ris_elem_w=p_ris_mw * 1e-3)
             rng = cfg.rng(di)
             ue_pos = get_ue_positions(cfg, rng)
@@ -157,7 +157,7 @@ def sensitivity():
     ee_vs_pstatic = np.zeros(len(p_static_w_values))
     for i, p_static in enumerate(p_static_w_values):
         ee_acc = []
-        for di in range(200):
+        for di in range(mc_draws(200)):
             cfg = Config(K=1, Mx=Mx, My=My, Pmax_dBm=20.0, p_bs_static_w=p_static)
             rng = cfg.rng(di)
             ue_pos = get_ue_positions(cfg, rng)

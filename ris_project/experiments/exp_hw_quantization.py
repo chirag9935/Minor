@@ -18,9 +18,9 @@ from channel import get_ue_positions, sv_channel_H, sv_channel_g
 from ao import run_ao
 from benchmarks import af_relay_rate
 from hardware import rate_with_quantization
-from experiments._common import new_fig, style_and_save, save_results
+from experiments._common import new_fig, style_and_save, save_results, mc_draws
 
-N_DRAWS = 200
+N_DRAWS = mc_draws(200)
 BITS_VALUES = [1, 2, 3, 4]
 M_VALUES = [64, 256]
 M_TO_MXMY = {64: (8, 8), 256: (16, 16)}

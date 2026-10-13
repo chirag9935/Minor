@@ -20,9 +20,9 @@ from config import Config
 from channel import sv_channel_H, sv_channel_g, direct_channel
 from ao import run_ao
 from benchmarks import no_ris_rate, random_phase_rate, af_relay_rate
-from experiments._common import new_fig, style_and_save, save_results, COLORS, MARKERS
+from experiments._common import new_fig, style_and_save, save_results, COLORS, MARKERS, mc_draws
 
-N_DRAWS = 200
+N_DRAWS = mc_draws(200)
 FREQ_GHZ_FINE = np.linspace(20, 350, 100)
 MARK_FREQ_GHZ = [28, 140, 300]
 RHO_VALUES = [2, 7.5, 15]

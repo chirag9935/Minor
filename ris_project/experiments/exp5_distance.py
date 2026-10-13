@@ -19,9 +19,9 @@ from config import Config
 from channel import sv_channel_H, sv_channel_g, direct_channel
 from ao import run_ao
 from benchmarks import no_ris_rate, random_phase_rate, af_relay_rate
-from experiments._common import new_fig, style_and_save, save_results, COLORS, MARKERS
+from experiments._common import new_fig, style_and_save, save_results, COLORS, MARKERS, mc_draws
 
-N_DRAWS = 200
+N_DRAWS = mc_draws(200)
 D_UE_RIS = np.array([2, 5, 10, 15, 20, 25, 30], dtype=float)
 D_RIS_BS = np.array([10, 15, 20, 25, 30, 35, 40], dtype=float)
 SCHEMES = ["AO-RIS", "Random-phase", "No-RIS", "AF relay"]

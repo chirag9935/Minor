@@ -26,10 +26,10 @@ from channel import get_ue_positions, sv_channel_H, sv_channel_g
 from beamforming import mrt
 from ris_opt import phase_update_single_user
 from metrics import effective_channel, sum_rate
-from experiments._common import new_fig, style_and_save, save_results
+from experiments._common import new_fig, style_and_save, save_results, FAST, mc_draws
 
-TOTAL_TIMESTEPS = 40000
-TIME_BUDGET_S = 15 * 60
+TOTAL_TIMESTEPS = 500 if FAST else 40000
+TIME_BUDGET_S = 60 if FAST else 15 * 60
 
 
 class RISPhaseEnv(gym.Env):
@@ -74,7 +74,7 @@ class RISPhaseEnv(gym.Env):
         return obs, reward, True, False, {}
 
 
-def evaluate_baselines(cfg: Config, n_episodes: int = 300):
+def evaluate_baselines(cfg: Config, n_episodes: int = mc_draws(300, 20)):
     """AO-oracle (closed-form theta for the episode's fixed w_ref) and
     random-phase baselines, evaluated on freshly drawn episodes."""
     ao_rates, rand_rates = [], []

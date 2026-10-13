@@ -14,9 +14,9 @@ from config import Config
 from channel import get_ue_positions, sv_channel_H, sv_channel_g, direct_channel
 from metrics import effective_channel
 from objective_b import min_power_single_user, required_power_single_user, af_relay_required_power
-from experiments._common import new_fig, style_and_save, save_results, COLORS, MARKERS
+from experiments._common import new_fig, style_and_save, save_results, COLORS, MARKERS, mc_draws
 
-N_DRAWS = 200
+N_DRAWS = mc_draws(200)
 SINR_DB = np.arange(0, 31, 5)
 
 

@@ -214,12 +214,23 @@ cleaner and more reassuring result than either fix alone would have given.
 
 ## Phase 2, Milestone 6: multi-user extensions and SDR
 
-**6(a) Rate vs K.** `exp_rate_vs_K.py`, K in {1,2,4,6}, Nt=8, M=64. Sum
-rate peaks around K=4 and falls off toward K=6 (close to the Nt=8
-antenna-count limit): more users means more multiplexing gain but also
-less room for ZF/RZF to null interference without noise enhancement --
-the classic massive-MIMO trade-off, reproduced here as expected, not an
-assumption we had to tune in.
+**6(a) Rate vs K -- a stated claim corrected after re-checking against the
+data.** `exp_rate_vs_K.py`, K in {1,2,4,6}, Nt=8, M=64. An earlier version
+of this writeup claimed sum rate "peaks around K=4" -- checked directly
+against `results/exp_rate_vs_K.npz` while building the Phase 2 final
+summary (`make_summary.py`) and found to be wrong: sum rate (AO-RIS)
+decreases MONOTONICALLY with K (11.58 -> 11.54 -> 10.29 -> 9.65 bit/s/Hz
+at K=1,2,4,6), it does not peak at K=4. The underlying mechanism is still
+the right one, just described backwards: going from K=1 (one user gets
+the full Nt=8-antenna beamforming gain with no interference to null) to
+higher K spends more of the BS's Nt=8 spatial degrees of freedom on ZF/
+RZF interference-nulling rather than array gain for any one user, so sum
+rate trends down as K grows and Nt stays fixed -- the classic massive-
+MIMO "price of orthogonality," here visible as a monotonic decline rather
+than a peak because K never gets small enough relative to Nt=8 for the
+multiplexing gain to outweigh it. Per-user rate (`peruser_AO-RIS`:
+11.58, 5.77, 2.57, 1.61) falls roughly in line with 1/K, consistent with
+sum rate declining much more gently than per-user rate as K grows.
 
 **6(b) SDR for RIS phases -- a real bug found and fixed during
 verification.** Applied SDR to the max-min-SINR problem with W fixed

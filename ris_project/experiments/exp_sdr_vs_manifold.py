@@ -36,10 +36,15 @@ from channel import get_ue_positions, sv_channel_H, sv_channel_g
 from beamforming import rzf
 from metrics import effective_channel
 from sdr import sdr_max_min_sinr, manifold_max_min_sinr, build_u, actual_min_sinr
-from experiments._common import new_fig, style_and_save, save_results, RESULTS_DIR
+from experiments._common import new_fig, style_and_save, save_results, RESULTS_DIR, FAST
 
-N_DRAWS = 20  # SDP solves are expensive; a smaller Monte-Carlo count is a deliberate, documented trade-off
-M_CONFIGS = [(16, (4, 4)), (32, (8, 4)), (64, (8, 8))]
+N_DRAWS = 2 if FAST else 20  # SDP solves are expensive; a smaller Monte-Carlo count is a deliberate, documented trade-off
+# RIS_FAST=1: M=64's SDP solves are the single most expensive thing this
+# project runs (see docs/ASSUMPTIONS.md) -- a smoke test only needs to
+# confirm the solver path still runs, not regenerate the M=64 result, so
+# skip it and keep just M=16 (fast) and M=32 (still cheap, SCS+max_iters
+# bound both apply uniformly regardless of M).
+M_CONFIGS = [(16, (4, 4)), (32, (8, 4))] if FAST else [(16, (4, 4)), (32, (8, 4)), (64, (8, 8))]
 
 
 def _checkpoint_path(M):

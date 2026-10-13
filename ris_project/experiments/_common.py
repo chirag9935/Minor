@@ -20,6 +20,20 @@ RESULTS_DIR = os.path.join(ROOT, "results")
 os.makedirs(PLOTS_DIR, exist_ok=True)
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
+# Phase 2, Section 10 ("Tests and quality gates"): run_all.sh --fast sets
+# RIS_FAST=1 so every experiment can run at a trivially small Monte-Carlo
+# scale for a quick end-to-end smoke test, without each script needing its
+# own CLI parsing. Full (non-fast) runs are what actually regenerate the
+# committed plots/results; --fast is for "does everything still run"
+# checks only -- its numbers are not meant to be trusted or committed.
+FAST = os.environ.get("RIS_FAST", "0") == "1"
+
+
+def mc_draws(full: int, fast: int = 3) -> int:
+    """Monte-Carlo draw/trial count: `full` normally, `fast` (default 3)
+    under RIS_FAST=1."""
+    return fast if FAST else full
+
 # One consistent colour per scheme, used in every figure.
 COLORS = {
     "AO-RIS": "#1f77b4",

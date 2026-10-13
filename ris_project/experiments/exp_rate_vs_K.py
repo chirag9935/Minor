@@ -14,9 +14,9 @@ from channel import get_ue_positions, sv_channel_H, sv_channel_g, direct_channel
 from ao import run_ao
 from benchmarks import no_ris_rate, random_phase_rate
 from metrics import sinr_per_user, effective_channel
-from experiments._common import new_fig, style_and_save, save_results, COLORS
+from experiments._common import new_fig, style_and_save, save_results, COLORS, mc_draws
 
-N_DRAWS = 200
+N_DRAWS = mc_draws(200)
 K_VALUES = [1, 2, 4, 6]
 
 

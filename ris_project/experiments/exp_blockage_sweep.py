@@ -19,9 +19,9 @@ from config import Config
 from channel import get_ue_positions, sv_channel_H, sv_channel_g, direct_channel
 from ao import run_ao
 from benchmarks import no_ris_rate, random_phase_rate, af_relay_rate
-from experiments._common import new_fig, style_and_save, save_results, COLORS, MARKERS
+from experiments._common import new_fig, style_and_save, save_results, COLORS, MARKERS, mc_draws
 
-N_DRAWS = 200
+N_DRAWS = mc_draws(200)
 PTX_DBM = 30.0
 BLOCKAGE_DB = np.array([0, 20, 40, 60, 80, 100], dtype=float)
 M_PANELS = [(64, (8, 8)), (256, (16, 16))]

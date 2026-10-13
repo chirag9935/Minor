@@ -29,7 +29,7 @@ from stable_baselines3.common.monitor import Monitor
 from config import Config
 from drl_env import RISPhaseEnv, random_phase_rate
 from channel import get_ue_positions, sv_channel_H, sv_channel_g
-from experiments._common import new_fig, style_and_save, save_results, RESULTS_DIR
+from experiments._common import new_fig, style_and_save, save_results, RESULTS_DIR, FAST
 
 # Checkpointing: each of the 6 (algo, seed) runs takes ~15-20 minutes, and
 # this machine has repeatedly had unrelated background processes (Chrome,
@@ -54,12 +54,16 @@ def _save_checkpoint(name: str, all_results: dict):
     with open(_checkpoint_path(name), "wb") as f:
         pickle.dump(all_results, f)
 
-TOTAL_TIMESTEPS = 200_000
-TIME_BUDGET_S = 20 * 60
-SEEDS = [0, 1, 2]
+# RIS_FAST=1: a smoke test only needs to confirm the training/eval/
+# checkpoint/plotting pipeline runs end-to-end without error, not produce
+# a meaningful learning curve -- see docs/ASSUMPTIONS.md for how long the
+# real (non-fast) runs actually took on this machine.
+TOTAL_TIMESTEPS = 500 if FAST else 200_000
+TIME_BUDGET_S = 60 if FAST else 20 * 60
+SEEDS = [0] if FAST else [0, 1, 2]
 ALGOS = {"SAC": SAC, "PPO": PPO}
-EVAL_FREQ = 5_000
-N_EVAL_CHANNELS = 500
+EVAL_FREQ = 200 if FAST else 5_000
+N_EVAL_CHANNELS = 10 if FAST else 500
 # Disjoint from every training stream: training envs use seed*1_000_000 + i
 # for seed in {0,1,2,...}; eval uses a separate high range so no training
 # draw can ever coincide with a held-out evaluation draw.

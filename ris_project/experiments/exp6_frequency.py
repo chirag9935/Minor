@@ -16,9 +16,9 @@ from tqdm import tqdm
 from config import Config
 from channel import sv_channel_H, sv_channel_g, molecular_absorption
 from ao import run_ao
-from experiments._common import new_fig, style_and_save, save_results, COLORS, MARKERS
+from experiments._common import new_fig, style_and_save, save_results, COLORS, MARKERS, mc_draws
 
-N_DRAWS = 200
+N_DRAWS = mc_draws(200)
 # Kept short enough that the 300 GHz curve stays meaningfully above zero
 # (at THz, usable range shrinks fast -- see the absorption panel below for
 # the longer-range view of the absorption loss itself).

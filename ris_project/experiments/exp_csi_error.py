@@ -19,9 +19,9 @@ from ao import run_ao
 from benchmarks import af_relay_rate, random_phase_rate
 from metrics import effective_channel, sum_rate
 from csi_error import add_csi_error
-from experiments._common import new_fig, style_and_save, save_results, COLORS
+from experiments._common import new_fig, style_and_save, save_results, COLORS, mc_draws
 
-N_DRAWS = 200
+N_DRAWS = mc_draws(200)
 EPSILON_VALUES = [0, 0.01, 0.05, 0.1, 0.2, 0.5]
 M_FIXED_EPS = [0.1]
 

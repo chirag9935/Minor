@@ -15,9 +15,9 @@ from config import Config
 from channel import get_ue_positions, sv_channel_H, sv_channel_g
 from metrics import effective_channel
 from objective_b import min_power_single_user, required_power_single_user
-from experiments._common import new_fig, style_and_save, save_results, COLORS, MARKERS
+from experiments._common import new_fig, style_and_save, save_results, COLORS, MARKERS, mc_draws
 
-N_DRAWS = 200
+N_DRAWS = mc_draws(200)
 GAMMA_DB = 10.0
 M_CONFIGS = [(16, (4, 4)), (32, (8, 4)), (64, (8, 8)), (128, (8, 16)), (256, (16, 16))]
 M_VALUES = np.array([m for m, _ in M_CONFIGS])

@@ -14,9 +14,9 @@ from config import Config
 from channel import get_ue_positions, sv_channel_H, sv_channel_g
 from ao import run_ao
 from metrics import energy_efficiency
-from experiments._common import new_fig, style_and_save, save_results
+from experiments._common import new_fig, style_and_save, save_results, mc_draws
 
-N_DRAWS = 200
+N_DRAWS = mc_draws(200)
 PTX_DBM = np.arange(0, 31, 5)
 M_VALUES = [16, 64, 256]
 M_TO_MXMY = {16: (4, 4), 64: (8, 8), 256: (16, 16)}

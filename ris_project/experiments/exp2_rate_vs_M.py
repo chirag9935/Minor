@@ -12,9 +12,9 @@ from config import Config
 from channel import get_ue_positions, sv_channel_H, sv_channel_g, direct_channel
 from ao import run_ao
 from benchmarks import no_ris_rate, random_phase_rate, af_relay_rate
-from experiments._common import new_fig, style_and_save, save_results, COLORS, MARKERS
+from experiments._common import new_fig, style_and_save, save_results, COLORS, MARKERS, mc_draws
 
-N_DRAWS = 200
+N_DRAWS = mc_draws(200)
 PTX_DBM = 30.0
 M_CONFIGS = [(16, (4, 4)), (32, (8, 4)), (64, (8, 8)), (128, (8, 16)), (256, (16, 16))]
 M_VALUES = np.array([m for m, _ in M_CONFIGS])
