@@ -47,6 +47,37 @@
    (Monte Carlo) and sweep one parameter at a time (Ptx, M, distance,
    frequency), saving the mean curves to `results/*.npz` and `plots/*.png`.
 
+## Phase 2 additions (Milestones 0-7)
+
+The pipeline above is Phase 1. Phase 2 (`RIS_Phase2_Prompt.md`, done
+through Milestone 7 -- see `docs/ASSUMPTIONS.md` for the full writeup)
+added these modules on top of it, each reusing steps 1-6 above rather
+than replacing them:
+
+- **objective_b.py** (Milestone 1): min-power design (dual of the sum-
+  rate objective) -- closed-form K=1, manifold-descent K>1.
+- **metrics.energy_efficiency + exp_objC_ee_optimal.py** (Milestone 2):
+  EE = BW*rate/P_total, optimized over Ptx via grid search + golden-
+  section refinement.
+- **config.py's `absorption_model="itu"`** (Milestone 3): real ITU-R
+  P.676 gaseous attenuation via the `itur` package, replacing Phase 1's
+  placeholder dB/km table (kept as `absorption_model="placeholder"`).
+- **hardware.py** (Milestone 4): b-bit RIS phase quantization with
+  coordinate-descent refinement over the discrete levels.
+- **csi_error.py** (Milestone 5): additive-Gaussian CSI error model and
+  a robust-RZF precoder that inflates its regularizer by the estimated
+  error power.
+- **sdr.py** (Milestone 6b): semidefinite relaxation for the max-min-
+  SINR RIS-phase problem (bisection on target SINR gamma + Gaussian
+  randomization recovery), compared against manifold optimization.
+- **drl_env.py + exp_drl_stageA/B.py** (Milestone 7): Gymnasium
+  environments for a DRL approach to RIS phase (and, for a joint agent,
+  BS beamformer) selection, trained with SAC/PPO via stable-baselines3.
+
+A fuller, Phase-2-inclusive viva question set (`docs/VIVA_QA.md`) is
+part of Milestone 8 and not yet written. The 10 below are the Phase 1
+subset, kept as originally written.
+
 ## 10 likely viva questions
 
 **1. Why does the RIS phase have a closed-form solution for K=1 but not K>1?**

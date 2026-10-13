@@ -8,23 +8,25 @@ beamforming and RIS passive phase shifts.
 **Phase 1** (`RIS_Master_Prompt.md`) implemented a defined subset of the
 full assignment (`RIS_Communication_Project_Workflow.md`) and was
 presented at the mid-evaluation (tag `phase1-midsem`). **Phase 2**
-(`RIS_Phase2_Prompt.md`, in progress) audits and fixes Phase 1 issues and
-completes the remaining assignment milestones (Objective B, Objective C,
-realistic absorption, hardware/CSI impairments, multi-K, SDR, DRL, paper
-draft). *This table and the rest of the README are being updated
-progressively as Phase 2 milestones land -- see `docs/ASSUMPTIONS.md` for
-the most current, detailed status of what's done.*
+(`RIS_Phase2_Prompt.md`) audited and fixed Phase 1 issues and completed
+every remaining assignment milestone (Objective B, Objective C, realistic
+absorption, hardware/CSI impairments, multi-K, SDR, a time-boxed DRL
+study) -- **Milestones M0-M7 are done**; only Milestone 8 (the written
+paper draft, `paper/`) remains, tracked separately and not yet started.
+See `docs/ASSUMPTIONS.md` for the full, detailed writeup of every
+milestone (including bugs found and fixed along the way) and
+`results/summary.csv` for the headline numbers.
 
 ## Assignment-step -> file mapping
 
 | Step | Assignment topic | Implemented in | Status |
 |---|---|---|---|
 | 1 | System model & scenario definition | `config.py`, `channel.py` | Done |
-| 2 | Optimization problem formulation | `metrics.py` (SINR/rate), `beamforming.py`/`ris_opt.py` (Option A constraints), `objective_b.py` (Option B) | Done: Option A and Option B. Option C (EE) in `metrics.py`/`exp_objC_*` |
-| 3 | Algorithm design | `ao.py`, `ris_opt.py`, `beamforming.py`, `objective_b.py` | Done: AO with ZF/RZF + closed-form/manifold RIS phases (Option A), AO with ZF + closed-form/manifold-descent RIS phases (Option B). SDR and the *joint* DRL problem: SDR planned (Phase 2 Milestone 6); see exp7 for an optional single-user DRL proof of concept |
-| 4 | Implementation & simulation | all of the above + `benchmarks.py` | Done |
-| 5 | Result analysis & plots | `experiments/exp1`-`exp6`, `exp_objB_*`, `exp_objC_*`, `results/summary.csv` | Done for Objectives A, B, C |
-| 6 | Documentation & paper writing | this README, `docs/` | Partial (results + assumptions documented; `paper/` LaTeX draft planned for Phase 2 Milestone 8) |
+| 2 | Optimization problem formulation | `metrics.py` (SINR/rate), `beamforming.py`/`ris_opt.py` (Objective A), `objective_b.py` (Objective B, min-power) | Done: Objectives A, B, and C (EE, `exp_objC_*`) |
+| 3 | Algorithm design | `ao.py`, `ris_opt.py`, `beamforming.py`, `objective_b.py`, `sdr.py`, `drl_env.py` | Done: AO (MRT/ZF/RZF + closed-form/manifold RIS phases) for Objectives A/B; SDR relaxation for the max-min-SINR problem (`sdr.py`, Milestone 6b); a time-boxed DRL study, SAC/PPO (Milestone 7, Stages A/B -- Stage C, the joint K>1 agent, scoped out, see `docs/ASSUMPTIONS.md`) |
+| 4 | Implementation & simulation | all of the above + `benchmarks.py`, `hardware.py`, `csi_error.py` | Done, including discrete phase shifts and imperfect-CSI impairment models |
+| 5 | Result analysis & plots | `experiments/` (22 scripts), `results/summary.csv` | Done for every milestone M0-M7; reproduce everything via `./run_all.sh` (or `--fast` for a quick smoke test) |
+| 6 | Documentation & paper writing | this README, `docs/` | Results + assumptions fully documented for M0-M7; `paper/` LaTeX draft, `docs/FINAL_PRESENTATION_OUTLINE.md`, `docs/VIVA_QA.md` are Milestone 8, not yet started |
 
 ## Scope
 
@@ -32,19 +34,27 @@ Phase 1's scope (`RIS_Master_Prompt.md` section 0): blocked-LoS, sparse
 Saleh-Valenzuela + THz molecular absorption channels, sum-rate
 maximization (Option A), AO (MRT/ZF/RZF + closed-form/manifold RIS
 phases), three benchmarks, sensitivity sweeps over M/Ptx/distance/
-frequency, an optional single-user DRL demo. Phase 2 (`RIS_Phase2_Prompt.md`)
-adds: a post-mid-eval audit and bug-fix pass (Milestone 0); Objective B,
-min-power (Milestone 1); Objective C, energy efficiency optimization
-(Milestone 2); a realistic ITU-R-based absorption model (Milestone 3);
-discrete RIS phases (Milestone 4); imperfect CSI (Milestone 5); multi-K
-and SDR (Milestone 6); a time-boxed DRL study (Milestone 7); and a paper
-draft (Milestone 8). See `docs/ASSUMPTIONS.md` for what's done so far
-within Phase 2 and `RIS_Phase2_Prompt.md` for the full plan.
+frequency, an optional single-user DRL demo. Phase 2 (`RIS_Phase2_Prompt.md`,
+**done through Milestone 7**) added: a post-mid-eval audit and bug-fix
+pass, including a significant MRT-precoder bug affecting every K=1 result
+(Milestone 0); Objective B, min-power (Milestone 1); Objective C, energy
+efficiency optimization (Milestone 2); a realistic ITU-R P.676 absorption
+model via the `itur` package (Milestone 3); discrete RIS phase shifts
+with quantization-aware refinement (Milestone 4); an additive-Gaussian
+imperfect-CSI model with a robust RZF variant (Milestone 5); multi-user
+scaling and SDR for the max-min-SINR problem (Milestone 6); a time-boxed
+DRL study with SAC/PPO across M=16/32/64 (Milestone 7, Stages A/B). See
+`docs/ASSUMPTIONS.md` for the full writeup of every milestone, including
+every bug found and fixed along the way, and `RIS_Phase2_Prompt.md` for
+the original plan.
 
-**Still out of scope** (realistic channel estimation beyond Milestone 5's
-additive-error model, hardware impairments beyond Milestone 4's phase
-quantization, DRL hyperparameter tuning aimed at beating AO) -- see
-`RIS_Phase2_Prompt.md` and the Future Work section below.
+**Still out of scope**: Milestone 8 (the written paper draft, slide
+outline, viva Q&A -- not started); Milestone 7's Stage C (joint K>1 DRL
+agent -- scoped out after Stage B's own finding that DRL already strains
+to scale with M under the time-boxed training budget, see
+`docs/ASSUMPTIONS.md`); DRL hyperparameter tuning aimed at closing the
+gap to AO (the spec explicitly time-boxes this rather than asking for a
+tuned result). See the Future Work section below.
 
 ## System model
 
@@ -92,22 +102,43 @@ cd ris_project
 python -m venv .venv && .venv/Scripts/activate   # or source .venv/bin/activate on Linux/Mac
 pip install -r requirements.txt
 
-pytest -q                                   # all tests
+pytest -q                # all 37 tests
 
-python -m experiments.plot_geometry         # plots/geometry.png
-python -m experiments.exp1_rate_vs_power    # plots/exp1_*.png
-python -m experiments.exp2_rate_vs_M        # plots/exp2_*.png
-python -m experiments.exp2b_crossover       # bonus, not required: plots/exp2b_crossover_K1.png
-python -m experiments.exp3_convergence      # plots/exp3_*.png
-python -m experiments.exp4_ee_vs_se         # plots/exp4_*.png
-python -m experiments.exp5_distance         # plots/exp5_*.png
-python -m experiments.exp6_frequency        # plots/exp6_*.png
-python -m experiments.exp7_drl_demo         # optional, plots/exp7_*.png
+./run_all.sh              # reproduces every figure/result from a clean
+                           # checkout -- takes HOURS (the DRL and SDR
+                           # milestones alone took most of a day on the
+                           # development machine, mostly due to unrelated
+                           # background processes repeatedly triggering
+                           # OS-level low-memory kills, not raw compute;
+                           # see docs/ASSUMPTIONS.md)
+./run_all.sh --fast       # smoke test: every script at a trivial
+                           # Monte-Carlo scale, confirms everything still
+                           # runs end-to-end in a few minutes -- its
+                           # numbers are NOT meant to be trusted or
+                           # committed
+```
+
+Or run individual milestones directly, e.g.:
+
+```bash
+python -m experiments.plot_geometry          # plots/geometry.png
+python -m experiments.exp1_rate_vs_power     # Phase 1, plots/exp1_*.png
+python -m experiments.exp_objB_power_vs_sinr # Milestone 1 (Objective B)
+python -m experiments.exp_objC_ee_optimal    # Milestone 2 (Objective C)
+python -m experiments.exp_absorption_itu     # Milestone 3 (ITU-R absorption)
+python -m experiments.exp_hw_quantization    # Milestone 4 (discrete phases)
+python -m experiments.exp_csi_error          # Milestone 5 (imperfect CSI)
+python -m experiments.exp_rate_vs_K          # Milestone 6a (multi-K)
+python -m experiments.exp_sdr_vs_manifold    # Milestone 6b (SDR vs manifold)
+python -m experiments.exp_drl_stageA         # Milestone 7, Stage A (K=1, M=16)
+python -m experiments.exp_drl_stageB         # Milestone 7, Stage B (K=1, M=32/64)
+python -m experiments.make_summary           # rebuild results/summary.csv
 ```
 
 Every experiment saves its raw curves to `results/*.npz` (so plots can be
 regenerated without re-running the Monte Carlo sweeps) and its figures to
-`plots/*.png` at 200 dpi.
+`plots/*.png` at 200 dpi. `run_all.sh` runs every script in milestone
+order; see it for the complete list (22 scripts).
 
 ## Assumptions and parameters
 
@@ -119,10 +150,12 @@ values:
 | `fc` | 140 GHz (28 / 300 GHz also tested) | |
 | `Nt`, default `M`, `K` | 8, 64 (8x8), 1 or 4 | |
 | `Pmax_dBm` | 30 dBm | swept 0-30 dBm in exp1/exp4 |
-| `blockage_loss_db` | 40 dB | direct-link penetration loss assumption |
-| `bs_gain_dbi` / `ue_gain_dbi` | 45 / 25 dBi | calibrated for ~15-25 dB mean AO SNR at K=1,M=64,Ptx=30dBm,140GHz (measured ≈20.2 dB); deliberately high -- see docs/ASSUMPTIONS.md |
-| Absorption k(28/140/300 GHz) | 0.1 / 2 / 8 dB/km | placeholders, see [8] |
+| `blockage_loss_db` | **80 dB** (Phase 2 Milestone 0) | raised from Phase 1's 40 dB, which let the un-optimized direct link beat AO-RIS; 80 dB represents a genuinely severe obstruction -- the old 40 dB value stays reproducible as an explicit comparison point, see `exp_blockage_sweep.py` |
+| `bs_gain_dbi` / `ue_gain_dbi` | 45 / 25 dBi (default preset); 25 / 10 dBi (`Config.realistic()`, lower-gain sensitivity point) | calibrated for ~15-25 dB mean AO SNR at K=1,M=64,Ptx=30dBm,140GHz; deliberately high -- see docs/ASSUMPTIONS.md |
+| Absorption model | **`itur` (ITU-R P.676, default)**; `absorption_db_per_km` table kept as a `"placeholder"` comparison option | Phase 2 Milestone 3; see `exp_absorption_itu.py` and [8] |
 | EE power model | eta=0.4, P_BS=1W, P_RIS=5mW/elem, P_UE=0.1W | see [5] |
+| RIS phase quantization | continuous (default); 1-4 bit discrete with coordinate-descent refinement | Phase 2 Milestone 4, `hardware.py` |
+| CSI error model | perfect CSI (default); additive Gaussian, epsilon in [0, 0.5] | Phase 2 Milestone 5, `csi_error.py` |
 
 ## Results
 
@@ -197,28 +230,71 @@ the physical interpretation of each. Headline numbers are in
    fix below), which is further evidence it reflects the RL setup rather
    than a one-off fluke.
 
+## Phase 2 results (Milestones 0-7)
+
+*(Full writeup with every bug found and fixed, every numeric finding, and
+every honest limitation is in `docs/ASSUMPTIONS.md` -- this is a brief
+index. Headline numbers are in `results/summary.csv`.)*
+
+- **Milestone 0 (audit/fixes)**: found and fixed a significant MRT-
+  precoder bug (missing conjugate) affecting every K=1 result in the
+  project; raised `blockage_loss_db` 40->80 dB so "blocked" is genuinely
+  blocked (`exp_blockage_sweep.py`).
+- **Milestone 1 (Objective B, min-power)**: closed-form (K=1) and
+  manifold-descent (K>1) min-power RIS design; required power decreases
+  monotonically in M, as expected (`exp_objB_*.py`).
+- **Milestone 2 (Objective C, energy efficiency)**: grid search +
+  golden-section refinement finds an EE-optimal Ptx distinct from the
+  rate-maximizing Ptx=30dBm at every M (`exp_objC_ee_optimal.py`).
+- **Milestone 3 (realistic absorption)**: real ITU-R P.676 gaseous
+  attenuation via the `itur` package, replacing Phase 1's placeholder
+  dB/km table (`exp_absorption_itu.py`).
+- **Milestone 4 (discrete RIS phases)**: 1-4 bit quantization with
+  coordinate-descent refinement; rate approaches the continuous-phase
+  bound as bits increase, as expected (`exp_hw_quantization.py`).
+- **Milestone 5 (imperfect CSI)**: additive-Gaussian CSI error model plus
+  a robust RZF variant; K=4 (RZF) is far more CSI-error-sensitive than
+  K=1 (MRT) (`exp_csi_error.py`).
+- **Milestone 6 (multi-K, SDR)**: sum rate decreases monotonically with K
+  at fixed Nt=8 (`exp_rate_vs_K.py`); SDR for the max-min-SINR problem,
+  including two real numerical bugs found and fixed (solver scaling, then
+  CLARABEL's interior-point memory/time cost at scale, fixed by switching
+  to SCS with a bounded iteration count) -- manifold optimization matches
+  or beats SDR+randomization at every M tested, and is much faster
+  (`sdr.py`, `exp_sdr_vs_manifold.py`).
+- **Milestone 7 (DRL, Stages A/B)**: SAC and PPO (3 seeds each) learn a
+  non-trivial RIS phase policy purely from reward signal, landing
+  28-52% short of the AO oracle depending on M -- a real, honest "DRL
+  doesn't scale as gracefully as AO" finding, not a tuned result
+  (`exp_drl_stageA.py`, `exp_drl_stageB.py`). Stage C (joint K>1 agent)
+  was scoped out given this finding.
+
 ## Limitations
 
-- THz molecular absorption coefficients are placeholders, not derived from
-  ITU-R P.676 / HITRAN data (see [8]).
 - The direct link's blockage is a fixed dB penalty, not geometric ray
   tracing against the drawn blocker.
-- No channel estimation error or hardware impairments are modelled
-  (perfect CSI assumed).
 - The AF relay and RIS legs share a simplified single-path/sparse-SV
   path-loss model rather than independently validated measurements.
-- The DRL demo (exp7, optional) is a proof of concept only, not tuned to
-  match AO.
+- CSI error is modelled as additive Gaussian noise on the channel
+  estimate, not derived from a specific estimation algorithm (e.g. pilot-
+  based LS/MMSE); hardware impairments beyond RIS phase quantization
+  (e.g. amplifier nonlinearity, phase noise) are not modelled.
+- The DRL study (Milestone 7) is explicitly time-boxed per the spec, not
+  tuned to match or beat AO; Stage C (joint multi-user agent) was not
+  attempted, see `docs/ASSUMPTIONS.md`.
+- SDR is not run above M=64 (the SDP does not scale well at this problem
+  size even with the fixes found during Milestone 6, see
+  `docs/ASSUMPTIONS.md`).
 
 ## Future work
 
-SDR-based RIS phase optimization with Gaussian randomization; Objective B
-(min-power design); realistic/estimated CSI instead of perfect CSI;
-hardware impairments (phase quantization, amplifier nonlinearity); joint
-multi-user DRL (beamformer + RIS phases together); DRL hyperparameter
-tuning aimed at matching or beating AO; a measurement-based or ITU-R/HITRAN
-molecular absorption model; a full written paper (Step 6 of the
-assignment).
+A full written paper draft, slide outline, and viva Q&A (Milestone 8 --
+not yet started); the DRL joint multi-user agent (Stage C, K>1); DRL
+hyperparameter tuning or a longer training budget aimed at closing the
+gap to AO; channel estimation modelled from a specific pilot/estimator
+algorithm rather than an additive-error abstraction; a measurement-based
+or HITRAN-cross-validated molecular absorption model alongside the
+current ITU-R P.676 one.
 
 ## References
 
