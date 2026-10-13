@@ -188,6 +188,14 @@ def run_stage(cfg: Config, name: str):
     len(SEEDS) seeds at the given cfg, checkpointed and named by `name`
     (e.g. "exp_drl_stageA", "exp_drl_stageB_M32").
 
+    Under RIS_FAST=1, `name` gets a "_fast" suffix so a smoke test writes
+    to its own files instead of colliding with (or being skipped because
+    of) the real full-scale deliverables -- confirmed to actually matter:
+    without this, a --fast run of exp_drl_stageA/B silently skipped the
+    entire DRL training/eval/plotting pipeline because the real results
+    already existed on disk, so the "does everything still run" smoke
+    test never actually exercised this code path at all.
+
     Skips entirely if name's final results .npz already exists: the
     checkpoint is deleted on success (it's scratch, not a deliverable),
     which means a later re-run of a multi-stage caller (e.g.
@@ -198,6 +206,8 @@ def run_stage(cfg: Config, name: str):
     successfully got ~an hour of its results discarded and retrained from
     zero by a resume after a later stage was killed) before this check
     was added."""
+    if FAST:
+        name = f"{name}_fast"
     results_path = os.path.join(RESULTS_DIR, f"{name}.npz")
     if os.path.exists(results_path) and not os.path.exists(_checkpoint_path(name)):
         print(f"{name}: results already exist at {results_path} and no checkpoint is pending -- skipping.", flush=True)
